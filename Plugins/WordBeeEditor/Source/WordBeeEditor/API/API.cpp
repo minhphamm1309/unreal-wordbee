@@ -8,10 +8,10 @@
 #include "Misc/MessageDialog.h"  // For showing messages in the editor
 
 
-void UAPI::Authenticate(FString AccountId, FString ApiKey, FString BaseUrl)
+void UAPI::Authenticate(FString AccountId, FString ApiKey, FString BaseUrl , FOnAuthCompleted callback)
 {
 	FString URL = FString::Printf(TEXT("https://%s.%s/api/auth/token"), *AccountId, *BaseUrl);
-
+	this->OnAuthCompleted = callback;
 	// Create the HTTP request
 	TSharedRef<IHttpRequest, ESPMode::ThreadSafe> HttpRequest = FHttpModule::Get().CreateRequest();
 
@@ -42,6 +42,7 @@ void UAPI::Authenticate(FString AccountId, FString ApiKey, FString BaseUrl)
 
 void UAPI::OnAuthResponseReceived(FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful)
 {
+	FString ResponseAuthToken = "";
 	if (bWasSuccessful && Response.IsValid())
 	{
 		int32 ResponseCode = Response->GetResponseCode();
@@ -51,7 +52,7 @@ void UAPI::OnAuthResponseReceived(FHttpRequestPtr Request, FHttpResponsePtr Resp
 			// If the response is 200 (OK), parse the response body
 			FString ResponseContent = Response->GetContentAsString();
 			UE_LOG(LogTemp, Log, TEXT("Response: %s"), *ResponseContent);
-
+			ResponseAuthToken = ResponseContent;
 			// Parse the JSON response
 			TSharedPtr<FJsonObject> JsonResponse;
 			TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(ResponseContent);
@@ -64,6 +65,7 @@ void UAPI::OnAuthResponseReceived(FHttpRequestPtr Request, FHttpResponsePtr Resp
 
 				// You can display a message dialog in the editor
 				FText AuthMessage = FText::FromString(FString::Printf(TEXT("Authenticated successfully! Token: %s"), *AuthToken));
+				ResponseAuthToken = AuthToken;
 				FMessageDialog::Open(EAppMsgType::Ok, AuthMessage);
 			}
 		}
@@ -79,5 +81,9 @@ void UAPI::OnAuthResponseReceived(FHttpRequestPtr Request, FHttpResponsePtr Resp
 		// Handle request failure
 		FText ErrorMessage = FText::FromString(TEXT("Request failed."));
 		FMessageDialog::Open(EAppMsgType::Ok, ErrorMessage);
+	}
+	if (OnAuthCompleted.IsBound())
+	{
+		OnAuthCompleted.Execute(ResponseAuthToken);
 	}
 }

@@ -17,4 +17,18 @@ private:
 	TSharedPtr<SEditableTextBox> URL;
 	TSharedPtr<SEditableTextBox> AccountId;
 	TSharedPtr<SEditableTextBox> APIKey;
+	TSharedPtr<STextBlock> ResponseTextBlock;
+
+	bool bConnecting = false;
+	FText ButtonConnectStateText;
+	void SetConnectingState(bool bConnecting);
+	FText GetButtonText() const;
+	bool IsConnectButtonEnabled() const;
+
+	void OnCompletedAuth(FString ResponseString);
+	void SaveSettings() const;
+	void LoadSettings() const;
 };
+
+
+

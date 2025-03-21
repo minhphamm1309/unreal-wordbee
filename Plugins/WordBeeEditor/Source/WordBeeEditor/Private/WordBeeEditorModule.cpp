@@ -30,12 +30,31 @@ void FWordBeeEditorModule::RegisterMenus()
 	FToolMenuOwnerScoped OwnerScoped(this);
 	UToolMenu* Menu = UToolMenus::Get()->ExtendMenu("LevelEditor.MainMenu.Tools");
 	FToolMenuSection& Section = Menu->AddSection("CustomTools", FText::FromString("Custom Tools"));
-	Section.AddMenuEntry(
-		"WordBeeConfigEditorTab",
-		FText::FromString("WordBee Config Editor"),
-		FText::FromString("Open the WordBee Config Editor"),
-		FSlateIcon(),
-		FUIAction(FExecuteAction::CreateRaw(this, &FWordBeeEditorModule::OnMenuButtonClicked))
+	// Section.AddMenuEntry(
+	// 	"WordBeeConfigEditorTab",
+	// 	FText::FromString("Configure"),
+	// 	FText::FromString("Open the WordBee Config Editor"),
+	// 	FSlateIcon(),
+	// 	FUIAction(FExecuteAction::CreateRaw(this, &FWordBeeEditorModule::OnMenuButtonClicked))
+	// );
+
+	// Add a submenu called "WordBee Link"
+	Section.AddSubMenu(
+		"WordBeeLinkSubmenu",  // Unique name for the submenu
+		FText::FromString("WordBee Link"),  // Displayed name in the menu
+		FText::FromString("Access WordBee tools"),  // Tooltip for the submenu
+		FNewToolMenuDelegate::CreateLambda([this](UToolMenu* InMenu)
+		{
+			// Inside the submenu, add the "Configure" button
+			FToolMenuSection& SubMenuSection = InMenu->AddSection("WordBeeToolsSection", FText::FromString("WordBee Tools"));
+			SubMenuSection.AddMenuEntry(
+				"WordBeeConfigEditorTab",
+				FText::FromString("Configure"),
+				FText::FromString("Open the WordBee Config Editor"),
+				FSlateIcon(),
+				FUIAction(FExecuteAction::CreateRaw(this, &FWordBeeEditorModule::OnMenuButtonClicked))
+			);
+		})
 	);
 }
 

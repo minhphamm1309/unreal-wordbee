@@ -14,8 +14,23 @@ void SConnectTab::Construct(const FArguments& InArgs)
 		.AutoHeight()
 		.Padding(5)
 		[
-			SNew(STextBlock)
-			.Text(FText::FromString("URL:"))
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot()
+			.FillWidth(1.0f)
+			.Padding(5)
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString("URL:"))
+			]
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			.Padding(5)
+			[
+				SNew(SButton)
+				.Text(this, &SConnectTab::GetButtonText)  // Bind the button text to the current state
+				.IsEnabled(this, &SConnectTab::IsConnectButtonEnabled)  // Bind button enabled state
+				.OnClicked(this, &SConnectTab::OnConnectButtonClicked)
+			]
 		]
 		+ SVerticalBox::Slot()
 		.AutoHeight()
@@ -57,17 +72,17 @@ void SConnectTab::Construct(const FArguments& InArgs)
 			SAssignNew(APIKey, SEditableTextBox)
 			.HintText(FText::FromString("Enter API key"))
 		]
-
-		// Connect Button
-		+ SVerticalBox::Slot()
-		.AutoHeight()
-		.Padding(5)
-		[
-			SNew(SButton)
-			.Text(this, &SConnectTab::GetButtonText)  // Bind the button text to the current state
-			.IsEnabled(this, &SConnectTab::IsConnectButtonEnabled)  // Bind button enabled state
-			.OnClicked(this, &SConnectTab::OnConnectButtonClicked)
-		]
+		//
+		// // Connect Button
+		// + SVerticalBox::Slot()
+		// .AutoHeight()
+		// .Padding(5)
+		// [
+		// 	SNew(SButton)
+		// 	.Text(this, &SConnectTab::GetButtonText)  // Bind the button text to the current state
+		// 	.IsEnabled(this, &SConnectTab::IsConnectButtonEnabled)  // Bind button enabled state
+		// 	.OnClicked(this, &SConnectTab::OnConnectButtonClicked)
+		// ]
 
 		// AuthenId Label
 		+ SVerticalBox::Slot()
@@ -77,6 +92,65 @@ void SConnectTab::Construct(const FArguments& InArgs)
 			SAssignNew(ResponseTextBlock, STextBlock)
 			.Text(FText::GetEmpty())  // Initially empty
 			.Visibility(EVisibility::Collapsed)  // Initially hidden
+		]
+
+		+ SVerticalBox::Slot()
+		.AutoHeight()
+		.Padding(5)
+		[
+			SNew(SBorder)
+			.Padding(5)
+			[
+				SNew(SVerticalBox)
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(5)
+				[
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot()
+					.FillWidth(1.0f)
+					.Padding(5)
+					[
+						SNew(STextBlock)
+						.Text(FText::FromString("Document ID:"))
+					]
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
+					.Padding(5)
+					[
+						SNew(SButton)
+						.Text(FText::FromString("Select Document"))  // Bind the button text to the current state
+						.IsEnabled(this, &SConnectTab::HasAuthenticatingCredentials)  // Bind button enabled state
+						.OnClicked(this, &SConnectTab::OnSelectDocumentClicked)
+					]
+				]
+
+				// Document ID Label and TextBox
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(5)
+				[
+					SAssignNew(DocumentId, SEditableTextBox)
+					.HintText(FText::FromString("Enter document ID"))
+					.IsEnabled(this, &SConnectTab::HasAuthenticatingCredentials)
+				]
+				
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(5)
+				[
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot()
+					.HAlign(HAlign_Right)
+					.Padding(5)
+					[
+						SNew(SButton)
+						.Text(FText::FromString("Link"))  // Bind the button text to the current state
+						.IsEnabled(this, &SConnectTab::HasAuthenticatingCredentials)  // Bind button enabled state
+						.OnClicked(this, &SConnectTab::OnLinkDocumentClicked)
+					]
+				]
+			]
 		]
 	];
 
@@ -100,6 +174,15 @@ FReply SConnectTab::OnConnectButtonClicked()
 	return FReply::Handled();
 }
 
+FReply SConnectTab::OnSelectDocumentClicked()
+{
+	return FReply::Handled();
+}
+
+FReply SConnectTab::OnLinkDocumentClicked()
+{
+	return FReply::Handled();
+}
 
 
 void SConnectTab::SetConnectingState(bool bConnecting)
@@ -127,6 +210,7 @@ void SConnectTab::OnCompletedAuth(FString ResponseString)
 	if (ResponseString.IsEmpty())
 	{
 		ResponseTextBlock->SetVisibility(EVisibility::Collapsed);
+		bIsAuthenticated = false;
 	}
 	else
 	{
@@ -134,7 +218,13 @@ void SConnectTab::OnCompletedAuth(FString ResponseString)
 		// Display the response in the text block
 		ResponseTextBlock->SetText(FText::FromString(AuthToken));
 		ResponseTextBlock->SetVisibility(EVisibility::Visible);
+		bIsAuthenticated = true;
 	}
+}
+
+bool SConnectTab::HasAuthenticatingCredentials() const
+{
+	return bIsAuthenticated;
 }
 
 void SConnectTab::SaveSettings() const

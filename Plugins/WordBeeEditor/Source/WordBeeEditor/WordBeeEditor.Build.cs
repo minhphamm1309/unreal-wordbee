@@ -21,8 +21,8 @@ public class WordBeeEditor : ModuleRules
 				"ToolMenus",
 				"Http", 
 				"Json", 
-				"JsonUtilities"
-				
+				"JsonUtilities",
+				"EditorScriptingUtilities"
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);

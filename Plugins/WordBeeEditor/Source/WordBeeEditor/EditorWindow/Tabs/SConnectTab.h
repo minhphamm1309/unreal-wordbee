@@ -1,6 +1,9 @@
 #pragma once
+#include "WordBeeEditor/Command/FDocumentData.h"
+#include "WordBeeEditor/Utils/UserInfo.h"
 
-class SConnectTab : public SCompoundWidget
+
+class SConnectTab : public SCompoundWidget 
 {
 public:
 	SLATE_BEGIN_ARGS(SConnectTab) {}
@@ -21,11 +24,17 @@ private:
 	TSharedPtr<SEditableTextBox> AccountId;
 	TSharedPtr<SEditableTextBox> APIKey;
 	TSharedPtr<SEditableTextBox> DocumentId;
+	TSharedPtr<SBorder> ConnectionPanel;
+	TSharedPtr<SBorder> LinkPanel;
+	TSharedPtr<SBox> SubWindow;
 	TSharedPtr<STextBlock> ResponseTextBlock;
-
+	TArray<FDocumentData> DocumentsData;
+	
+	UserInfo UserInfo;
 	bool bConnecting = false;
 	FText ButtonConnectStateText;
 	bool bIsAuthenticated = false;
+	bool bIsDocumentsFetched = false;
 	
 	void SetConnectingState(bool bConnecting);
 	FText GetButtonText() const;
@@ -35,6 +44,12 @@ private:
 	bool HasAuthenticatingCredentials() const;
 	void SaveSettings() const;
 	void LoadSettings() const;
+	void LoadDocumentSettings();
+	bool HasDocumentsFetched() const;
+	void SetDocumentsFetched();
+	
+	void OnFetchDocumentsResponseReceived( const TArray<FDocumentData>&);
+	void OnSubWindowClosed(FString InDocumentId);
 };
 
 

@@ -7,10 +7,13 @@
 #include "Json.h"
 #include "Misc/MessageDialog.h"  // For showing messages in the editor
 
+const FString UAPI::ROUTER_AUTH = "api/auth/token";
+const FString UAPI::ROUTER_DOCUMENTS = "api/apps/wbflex/list";
+const FString UAPI::ROUTER_DOCUMENT_PULL = "api/apps/wbflex/documents/{0}/contents/pull";
 
 void UAPI::Authenticate(FString AccountId, FString ApiKey, FString BaseUrl , FOnAuthCompleted callback)
 {
-	FString URL = FString::Printf(TEXT("https://%s.%s/api/auth/token"), *AccountId, *BaseUrl);
+	FString URL = ConstructUrl(AccountId, BaseUrl, ROUTER_AUTH);
 	this->OnAuthCompleted = callback;
 	// Create the HTTP request
 	TSharedRef<IHttpRequest, ESPMode::ThreadSafe> HttpRequest = FHttpModule::Get().CreateRequest();
@@ -38,6 +41,12 @@ void UAPI::Authenticate(FString AccountId, FString ApiKey, FString BaseUrl , FOn
 
 	// Execute the request
 	HttpRequest->ProcessRequest();
+}
+
+FString UAPI::ConstructUrl(FString AccountId, FString BaseUrl, FString Router)
+{
+	FString URL = FString::Printf(TEXT("https://%s.%s/%s"), *AccountId, *BaseUrl, *Router);
+	return URL;
 }
 
 void UAPI::OnAuthResponseReceived(FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful)

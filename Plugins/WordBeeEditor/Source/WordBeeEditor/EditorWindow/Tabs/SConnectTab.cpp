@@ -1,6 +1,8 @@
 #include "SConnectTab.h"
 
 #include "WordBeeEditor/API/API.h"
+#include "WordBeeEditor/Command/DocumentList/UGetDocumentsCommand.h"
+#include "WordBeeEditor/EditorWindow/SubWindow/SSelectorDocumentSubWindow.h"
 
 void SConnectTab::Construct(const FArguments& InArgs)
 {
@@ -9,97 +11,102 @@ void SConnectTab::Construct(const FArguments& InArgs)
 	[
 		SNew(SVerticalBox)
 
-		// IP Address Label and TextBox
+		// Connect panel
 		+ SVerticalBox::Slot()
 		.AutoHeight()
-		.Padding(5)
 		[
-			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot()
-			.FillWidth(1.0f)
-			.Padding(5)
+			SAssignNew(ConnectionPanel,SBorder)
 			[
-				SNew(STextBlock)
-				.Text(FText::FromString("URL:"))
+				SNew(SVerticalBox)
+				// IP Address Label and TextBox
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(5)
+				[
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot()
+					.FillWidth(1.0f)
+					.Padding(5)
+					[
+						SNew(STextBlock)
+						.Text(FText::FromString("URL:"))
+					]
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
+					.Padding(5)
+					[
+						SNew(SButton)
+						.Text(this, &SConnectTab::GetButtonText)  // Bind the button text to the current state
+						.IsEnabled(this, &SConnectTab::IsConnectButtonEnabled)  // Bind button enabled state
+						.OnClicked(this, &SConnectTab::OnConnectButtonClicked)
+					]
+				]
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(5)
+				[
+					SAssignNew(URL, SEditableTextBox)
+					.HintText(FText::FromString("Enter url"))
+				]
+
+				// Port Label and TextBox
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(5)
+				[
+					SNew(STextBlock)
+					.Text(FText::FromString("Account ID:"))
+				]
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(5)
+				[
+					SAssignNew(AccountId, SEditableTextBox)
+					.HintText(FText::FromString("Enter Account ID"))
+				]
+
+				// API Key Label and TextBox
+				// Port Label and TextBox
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(5)
+				[
+					SNew(STextBlock)
+					.Text(FText::FromString("API key:"))
+				]
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(5)
+				[
+					SAssignNew(APIKey, SEditableTextBox)
+					.HintText(FText::FromString("Enter API key"))
+				]
+
+				// AuthenId Label
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(5)
+				[
+					SAssignNew(ResponseTextBlock, STextBlock)
+					.Text(FText::GetEmpty())  // Initially empty
+					.Visibility(EVisibility::Collapsed)  // Initially hidden
+				]
 			]
-			+ SHorizontalBox::Slot()
-			.AutoWidth()
-			.Padding(5)
-			[
-				SNew(SButton)
-				.Text(this, &SConnectTab::GetButtonText)  // Bind the button text to the current state
-				.IsEnabled(this, &SConnectTab::IsConnectButtonEnabled)  // Bind button enabled state
-				.OnClicked(this, &SConnectTab::OnConnectButtonClicked)
-			]
-		]
-		+ SVerticalBox::Slot()
-		.AutoHeight()
-		.Padding(5)
-		[
-			SAssignNew(URL, SEditableTextBox)
-			.HintText(FText::FromString("Enter url"))
 		]
 
-		// Port Label and TextBox
+		// Subwindow
 		+ SVerticalBox::Slot()
 		.AutoHeight()
-		.Padding(5)
 		[
-			SNew(STextBlock)
-			.Text(FText::FromString("Account ID:"))
-		]
-		+ SVerticalBox::Slot()
-		.AutoHeight()
-		.Padding(5)
-		[
-			SAssignNew(AccountId, SEditableTextBox)
-			.HintText(FText::FromString("Enter Account ID"))
+			SAssignNew(SubWindow, SBox)
 		]
 
-		// API Key Label and TextBox
-		// Port Label and TextBox
+		// Document panel
 		+ SVerticalBox::Slot()
 		.AutoHeight()
 		.Padding(5)
 		[
-			SNew(STextBlock)
-			.Text(FText::FromString("API key:"))
-		]
-		+ SVerticalBox::Slot()
-		.AutoHeight()
-		.Padding(5)
-		[
-			SAssignNew(APIKey, SEditableTextBox)
-			.HintText(FText::FromString("Enter API key"))
-		]
-		//
-		// // Connect Button
-		// + SVerticalBox::Slot()
-		// .AutoHeight()
-		// .Padding(5)
-		// [
-		// 	SNew(SButton)
-		// 	.Text(this, &SConnectTab::GetButtonText)  // Bind the button text to the current state
-		// 	.IsEnabled(this, &SConnectTab::IsConnectButtonEnabled)  // Bind button enabled state
-		// 	.OnClicked(this, &SConnectTab::OnConnectButtonClicked)
-		// ]
-
-		// AuthenId Label
-		+ SVerticalBox::Slot()
-		.AutoHeight()
-		.Padding(5)
-		[
-			SAssignNew(ResponseTextBlock, STextBlock)
-			.Text(FText::GetEmpty())  // Initially empty
-			.Visibility(EVisibility::Collapsed)  // Initially hidden
-		]
-
-		+ SVerticalBox::Slot()
-		.AutoHeight()
-		.Padding(5)
-		[
-			SNew(SBorder)
-			.Padding(5)
+			SAssignNew(LinkPanel, SBorder)
 			[
 				SNew(SVerticalBox)
 				+ SVerticalBox::Slot()
@@ -120,7 +127,7 @@ void SConnectTab::Construct(const FArguments& InArgs)
 					[
 						SNew(SButton)
 						.Text(FText::FromString("Select Document"))  // Bind the button text to the current state
-						.IsEnabled(this, &SConnectTab::HasAuthenticatingCredentials)  // Bind button enabled state
+						.IsEnabled(this, &SConnectTab::HasDocumentsFetched)  // Bind button enabled state
 						.OnClicked(this, &SConnectTab::OnSelectDocumentClicked)
 					]
 				]
@@ -176,6 +183,13 @@ FReply SConnectTab::OnConnectButtonClicked()
 
 FReply SConnectTab::OnSelectDocumentClicked()
 {
+	SubWindow->SetVisibility(EVisibility::Visible);
+	ConnectionPanel->SetVisibility(EVisibility::Collapsed);
+	LinkPanel->SetVisibility(EVisibility::Collapsed);
+	auto subView = SNew(SSelectorDocumentSubWindow)
+		.OnSubWindowClosed(FOnSubWindowClosedDelegate::CreateSP(this, &SConnectTab::OnSubWindowClosed));
+	subView->Init(DocumentsData);
+	SubWindow->SetContent(subView);
 	return FReply::Handled();
 }
 
@@ -219,6 +233,11 @@ void SConnectTab::OnCompletedAuth(FString ResponseString)
 		ResponseTextBlock->SetText(FText::FromString(AuthToken));
 		ResponseTextBlock->SetVisibility(EVisibility::Visible);
 		bIsAuthenticated = true;
+		UserInfo.AccountId = AccountId->GetText().ToString();
+		UserInfo.ApiKey = APIKey->GetText().ToString();
+		UserInfo.BaseUrl = URL->GetText().ToString();
+		UserInfo.AuthToken = ResponseString.TrimChar('"');
+		LoadDocumentSettings();
 	}
 }
 
@@ -278,3 +297,44 @@ void SConnectTab::LoadSettings() const
 			AccountId->SetText(FText::FromString(SAccountId));
 	}
 }
+
+void SConnectTab::LoadDocumentSettings()
+{
+	UGetDocumentsCommand* HttpCommand = NewObject<UGetDocumentsCommand>();
+
+	HttpCommand->ExecuteHttpRequest(UserInfo, FOnHttpRequestComplete::CreateSP(this, &SConnectTab::OnFetchDocumentsResponseReceived));
+}
+
+bool SConnectTab::HasDocumentsFetched() const
+{
+	return  bIsDocumentsFetched;
+}
+
+void SConnectTab::SetDocumentsFetched()
+{
+	bIsDocumentsFetched = true;
+}
+
+void SConnectTab::OnFetchDocumentsResponseReceived( const TArray<FDocumentData>& response)
+{
+	if (response.Num() != 0)
+	{
+		DocumentsData = response;
+		SetDocumentsFetched();
+	}
+	else
+	{
+		UE_LOG(LogTemp, Log, TEXT("SConnectTab::OnFetchDocumentsResponseReceived"));
+	}
+}
+
+
+void SConnectTab::OnSubWindowClosed(FString InDocumentId)
+{
+	if (!InDocumentId.IsEmpty())
+		DocumentId->SetText(FText::FromString(InDocumentId));
+	ConnectionPanel->SetVisibility(EVisibility::Visible);
+	SubWindow->SetVisibility(EVisibility::Collapsed);
+	LinkPanel->SetVisibility(EVisibility::Visible);
+}
+

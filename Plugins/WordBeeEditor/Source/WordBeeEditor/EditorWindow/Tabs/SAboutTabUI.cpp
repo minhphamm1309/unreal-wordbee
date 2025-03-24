@@ -50,7 +50,7 @@ void SAboutTabUI::Construct(const FArguments& InArgs)
                 .AutoHeight()
                 [
                     SNew(STextBlock)
-                    .Text(FText::FromString("©2023, Wordbee, All Rights Reserved"))
+                    .Text(FText::FromString("@2023, Wordbee, All Rights Reserved"))
                 ]
             ]
         ]

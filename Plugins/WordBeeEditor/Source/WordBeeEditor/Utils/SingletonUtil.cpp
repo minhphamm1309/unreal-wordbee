@@ -10,7 +10,6 @@ T* SingletonUtil::GetOrCreateAsset(const FString& AssetPath)
         UE_LOG(LogTemp, Error, TEXT("GetOrCreateAsset: %s is not a UDataAsset!"), *T::StaticClass()->GetName());
         return nullptr;
     }
-
     // Try to load the asset
     T* Asset = Cast<T>(UEditorAssetLibrary::LoadAsset(AssetPath));
 

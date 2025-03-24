@@ -64,6 +64,22 @@
 		"directory": "/Users/Shared/Epic Games/UE_5.5/Engine/Source"
 	},
 	{
+		"file": "/Users/macos/Documents/Unreal Projects/unreal-wordbee/Plugins/WordBeeEditor/Source/WordBeeEditor/EditorWindow/Tabs/SDocumentInfo.cpp",
+		"arguments": [
+			"/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++",
+			"@/Users/macos/Documents/Unreal Projects/unreal-wordbee/.vscode/compileCommands_WordbeeConnect/WordBeeEditor.27.rsp"
+		],
+		"directory": "/Users/Shared/Epic Games/UE_5.5/Engine/Source"
+	},
+	{
+		"file": "/Users/macos/Documents/Unreal Projects/unreal-wordbee/Plugins/WordBeeEditor/Source/WordBeeEditor/EditorWindow/Tabs/SDocumentInfo.h",
+		"arguments": [
+			"/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++",
+			"@/Users/macos/Documents/Unreal Projects/unreal-wordbee/.vscode/compileCommands_WordbeeConnect/WordBeeEditor.27.rsp"
+		],
+		"directory": "/Users/Shared/Epic Games/UE_5.5/Engine/Source"
+	},
+	{
 		"file": "/Users/macos/Documents/Unreal Projects/unreal-wordbee/Plugins/WordBeeEditor/Source/WordBeeEditor/EditorWindow/WordBeeEditorConfigWindow.cpp",
 		"arguments": [
 			"/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++",
@@ -105,6 +121,22 @@
 	},
 	{
 		"file": "/Users/macos/Documents/Unreal Projects/unreal-wordbee/Plugins/WordBeeEditor/Source/WordBeeEditor/Public/WordBeeEditorModule.h",
+		"arguments": [
+			"/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++",
+			"@/Users/macos/Documents/Unreal Projects/unreal-wordbee/.vscode/compileCommands_WordbeeConnect/WordBeeEditor.27.rsp"
+		],
+		"directory": "/Users/Shared/Epic Games/UE_5.5/Engine/Source"
+	},
+	{
+		"file": "/Users/macos/Documents/Unreal Projects/unreal-wordbee/Plugins/WordBeeEditor/Source/WordBeeEditor/Utils/APIConstant.cpp",
+		"arguments": [
+			"/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++",
+			"@/Users/macos/Documents/Unreal Projects/unreal-wordbee/.vscode/compileCommands_WordbeeConnect/WordBeeEditor.27.rsp"
+		],
+		"directory": "/Users/Shared/Epic Games/UE_5.5/Engine/Source"
+	},
+	{
+		"file": "/Users/macos/Documents/Unreal Projects/unreal-wordbee/Plugins/WordBeeEditor/Source/WordBeeEditor/Utils/APIConstant.h",
 		"arguments": [
 			"/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++",
 			"@/Users/macos/Documents/Unreal Projects/unreal-wordbee/.vscode/compileCommands_WordbeeConnect/WordBeeEditor.27.rsp"

@@ -14,6 +14,7 @@ class UAPI : public UObject
 public :
 	static const FString ROUTER_AUTH ;
 	static const FString ROUTER_DOCUMENTS ;
+	static const FString ROUTER_DOCUMENT_PULL ;
 	
 public:
 	void Authenticate(FString AccountId, FString ApiKey, FString BaseUrl, FOnAuthCompleted callback);

@@ -9,6 +9,7 @@
 
 const FString UAPI::ROUTER_AUTH = "api/auth/token";
 const FString UAPI::ROUTER_DOCUMENTS = "api/apps/wbflex/list";
+const FString UAPI::ROUTER_DOCUMENT_PULL = "api/apps/wbflex/documents/{0}/contents/pull";
 
 void UAPI::Authenticate(FString AccountId, FString ApiKey, FString BaseUrl , FOnAuthCompleted callback)
 {

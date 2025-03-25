@@ -1,7 +1,7 @@
 #include "SConnectTab.h"
 
 #include "WordBeeEditor/API/API.h"
-#include "WordBeeEditor/Command/UGetDocumentsCommand.h"
+#include "WordBeeEditor/Command/DocumentList/UGetDocumentsCommand.h"
 #include "WordBeeEditor/EditorWindow/SubWindow/SSelectorDocumentSubWindow.h"
 
 void SConnectTab::Construct(const FArguments& InArgs)
@@ -188,7 +188,7 @@ FReply SConnectTab::OnSelectDocumentClicked()
 	LinkPanel->SetVisibility(EVisibility::Collapsed);
 	auto subView = SNew(SSelectorDocumentSubWindow)
 		.OnSubWindowClosed(FOnSubWindowClosedDelegate::CreateSP(this, &SConnectTab::OnSubWindowClosed));
-	subView->Init(DocumentsData);
+	subView->Init(UserInfo,DocumentsData);
 	SubWindow->SetContent(subView);
 	return FReply::Handled();
 }

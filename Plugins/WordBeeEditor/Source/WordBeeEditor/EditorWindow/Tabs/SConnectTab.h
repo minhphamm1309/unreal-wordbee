@@ -1,5 +1,5 @@
 #pragma once
-#include "WordBeeEditor/Command/FDocumentData.h"
+#include "WordBeeEditor/Command/DocumentList/FDocumentData.h"
 #include "WordBeeEditor/Utils/UserInfo.h"
 
 

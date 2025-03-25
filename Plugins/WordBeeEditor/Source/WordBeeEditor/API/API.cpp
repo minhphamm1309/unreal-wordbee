@@ -6,11 +6,16 @@
 #include "JsonUtilities.h"
 #include "Json.h"
 #include "Misc/MessageDialog.h"  // For showing messages in the editor
+#include "WordbeeEditor/Models/WordbeeResponse.h"
+#include "WordBeeEditor/Utils/APIConstant.h"
+
 
 const FString UAPI::ROUTER_AUTH = "api/auth/token";
 const FString UAPI::ROUTER_DOCUMENTS = "api/apps/wbflex/list";
 const FString UAPI::ROUTER_DOCUMENT_PULL = "api/apps/wbflex/documents/{0}/contents/pull";
-
+const FString UAPI::ROUTER_DOCUMENT = "api/apps/wbflex/documents/";
+const FString UAPI::ROUTER_POLL = "api/trm/status?requestid={0}";
+const FString UAPI::ROUTER_DownloadDocument = "api/media/get/{0}";
 void UAPI::Authenticate(FString AccountId, FString ApiKey, FString BaseUrl , FOnAuthCompleted callback)
 {
 	FString URL = ConstructUrl(AccountId, BaseUrl, ROUTER_AUTH);
@@ -96,3 +101,128 @@ void UAPI::OnAuthResponseReceived(FHttpRequestPtr Request, FHttpResponsePtr Resp
 		OnAuthCompleted.Execute(ResponseAuthToken);
 	}
 }
+void UAPI::FetchDocumentById(const UserInfo& userInfo, const FString& DocumentId, TFunction<void(const FDocumentInfo&)> Callback)
+{
+	if (userInfo.AccountId.IsEmpty() || userInfo.AuthToken.IsEmpty())
+	{
+		UE_LOG(LogTemp, Error, TEXT("Invalid user data. Cannot fetch document."));
+		return;
+	}
+
+	FString Url = ConstructUrl(userInfo.AccountId, userInfo.BaseUrl, ROUTER_DOCUMENT+DocumentId);
+	UE_LOG(LogTemp, Log, TEXT("Fetching document info from %s"), *Url);
+
+	TSharedRef<IHttpRequest, ESPMode::ThreadSafe> Request = FHttpModule::Get().CreateRequest();
+	Request->SetURL(Url);
+	Request->SetVerb(TEXT("GET"));
+	Request->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
+	Request->SetHeader(APIConstant::AuthToken, userInfo.AuthToken);
+	Request->SetHeader(APIConstant::AuthAccountID, userInfo.AccountId);
+
+	Request->OnProcessRequestComplete().BindLambda([Callback](FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful)
+	{
+		FString rawBody = Response.IsValid() ? Response->GetContentAsString() : TEXT("Request failed");
+		UE_LOG(LogTemp, Warning, TEXT("rawBody: %s"), *rawBody);
+		if (!bWasSuccessful || !Response.IsValid())
+		{
+			UE_LOG(LogTemp, Error, TEXT("Request failed: %s (Code: %d)"), *rawBody, Response.IsValid() ? Response->GetResponseCode() : -1);
+			return;
+		}
+
+		FDocumentInfo ParsedDocument;
+		if (!FJsonObjectConverter::JsonObjectStringToUStruct<FDocumentInfo>(rawBody, &ParsedDocument, 1, 0))
+		{
+			UE_LOG(LogTemp, Error, TEXT("Failed to parse response"));
+			return;
+		}
+		Callback(ParsedDocument);
+	});
+
+	Request->ProcessRequest();
+}
+void UAPI::PullDocument(UserInfo& userInfo, const FString& DocumentId)
+{
+	TSharedRef<IHttpRequest, ESPMode::ThreadSafe> Request = FHttpModule::Get().CreateRequest();
+	FString url = ConstructUrl(userInfo.AccountId, userInfo.BaseUrl, FString::Format(*ROUTER_DOCUMENT_PULL, { DocumentId }));
+	Request->SetURL(url);
+	Request->SetVerb(TEXT("POST"));
+	Request->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
+	Request->SetContentAsString(TEXT("{ \"includeComments\": true, \"includeCustomFields\": true, \"copySourceToTarget\": false }"));
+
+	Request->OnProcessRequestComplete().BindLambda([&userInfo](FHttpRequestPtr Req, FHttpResponsePtr Res, bool bSuccess)
+	{
+		if (bSuccess && Res.IsValid())
+		{
+			TSharedPtr<FJsonObject> JsonObject;
+			TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(Res->GetContentAsString());
+			if (FJsonSerializer::Deserialize(Reader, JsonObject))
+			{
+				int32 RequestId = JsonObject->GetObjectField("trm")->GetIntegerField("requestid");
+				CheckStatus(userInfo, RequestId);
+			}
+		}
+	});
+	Request->ProcessRequest();
+}
+void UAPI::CheckStatus(UserInfo& userInfo, int32 RequestId, int32 RetryCount)
+{
+	const int32 MaxRetries = 15; // Stop checking after 15 retries (~30 seconds)
+	if (RequestId == 0 || RetryCount >= MaxRetries)
+	{
+		UE_LOG(LogTemp, Error, TEXT("Status check timed out or invalid request ID."));
+		return;
+	}
+	TSharedRef<IHttpRequest, ESPMode::ThreadSafe> Request = FHttpModule::Get().CreateRequest();
+	FString url = ConstructUrl(userInfo.AccountId, userInfo.BaseUrl, FString::Format(*ROUTER_POLL, { RequestId }));
+	Request->SetURL(url);
+	Request->SetVerb(TEXT("GET"));
+
+	Request->OnProcessRequestComplete().BindLambda([RequestId, RetryCount, &userInfo](FHttpRequestPtr Req, FHttpResponsePtr Res, bool bSuccess)
+	{
+		if (bSuccess && Res.IsValid())
+		{
+			TSharedPtr<FJsonObject> JsonObject;
+			TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(Res->GetContentAsString());
+
+			if (FJsonSerializer::Deserialize(Reader, JsonObject))
+			{
+				FString Status = JsonObject->GetObjectField("trm")->GetStringField("status");
+				if (Status == "Finished")
+				{
+					FString FileToken = JsonObject->GetObjectField("custom")->GetStringField("filetoken");
+					DownloadFile(userInfo, FileToken);
+				}
+				else
+				{
+					FPlatformProcess::Sleep(2.0f); // Wait before retrying
+					CheckStatus(userInfo, RequestId, RetryCount + 1); // Increment retry count
+				}
+			}
+		}
+		else
+		{
+			UE_LOG(LogTemp, Error, TEXT("Failed to get status response."));
+		}
+	});
+	Request->ProcessRequest();
+}
+void UAPI::DownloadFile(UserInfo& userInfo, const FString& FileToken)
+{
+	TSharedRef<IHttpRequest, ESPMode::ThreadSafe> Request = FHttpModule::Get().CreateRequest();
+	FString url = ConstructUrl(userInfo.AccountId, userInfo.BaseUrl, FString::Format(*ROUTER_DownloadDocument, { FileToken }));
+	Request->SetURL(url);
+	Request->SetVerb(TEXT("GET"));
+
+	Request->OnProcessRequestComplete().BindLambda([](FHttpRequestPtr Req, FHttpResponsePtr Res, bool bSuccess)
+	{
+		if (bSuccess && Res.IsValid())
+		{
+			UE_LOG(LogTemp, Log, TEXT("File downloaded successfully"));
+		}
+	});
+	Request->ProcessRequest();
+}
+
+
+
+

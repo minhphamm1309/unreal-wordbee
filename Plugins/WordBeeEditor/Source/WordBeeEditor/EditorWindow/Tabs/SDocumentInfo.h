@@ -24,4 +24,5 @@ private:
     TArray<FString> TargetLanguages;
     FString LastTMSChange;
     FString LastSynchronization;
+    void RefreshDocumentInfo();
 };

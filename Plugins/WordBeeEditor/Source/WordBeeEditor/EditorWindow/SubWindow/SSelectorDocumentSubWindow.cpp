@@ -1,6 +1,9 @@
 #include "SSelectorDocumentSubWindow.h"
 
+#include "IOS/IOSAsyncTask.h"
 #include "WordBeeEditor/Command/LinkProject/ULinkDocumentCommand.h"
+#include "WordBeeEditor/Command/CreateDataAsset/UserData.h"
+
 
 BEGIN_SLATE_FUNCTION_BUILD_OPTIMIZATION
 
@@ -114,10 +117,10 @@ void SSelectorDocumentSubWindow::OnDocumentSelected(TSharedPtr<FDocumentData> Se
 	DocumentId = SelectedItem->Id;
 }
 
-void SSelectorDocumentSubWindow::Init(const struct FUserInfo InUserInfo,const TArray<FDocumentData>& InDocumentData)
+void SSelectorDocumentSubWindow::Init(UUserData* InUserData,const TArray<FDocumentData>& InDocumentData)
 {
 	DocumentDataArray = InDocumentData;
-	UserInfo = InUserInfo;
+	UserData = InUserData;
 	for (const FDocumentData& Doc : DocumentDataArray)
 	{
 		TSharedPtr<FString> Preference = MakeShared<FString>(Doc.Preference);
@@ -142,7 +145,8 @@ FReply SSelectorDocumentSubWindow::CloseWindow() const
 	{
 		if (!DocumentId.IsEmpty())
 		{
-			ULinkDocumentCommand::Execute(UserInfo, DocumentId, FOnLinkDocumentComplete::CreateLambda([this](bool bSuccess)
+			
+			ULinkDocumentCommand::Execute( UserData,DocumentId, FOnLinkDocumentComplete::CreateLambda([this](bool bSuccess)
 			{
 				OnSubWindowClosed.Execute(DocumentId);
 			}));

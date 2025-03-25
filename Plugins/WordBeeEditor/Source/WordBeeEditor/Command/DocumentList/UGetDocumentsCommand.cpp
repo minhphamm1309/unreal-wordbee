@@ -4,12 +4,11 @@
 #include "HttpModule.h"
 #include "Interfaces/IHttpResponse.h"
 #include "WordBeeEditor/API/API.h"
-#include "WordBeeEditor/Utils/Constant.h"
 
 
-void UGetDocumentsCommand::ExecuteHttpRequest(FUserInfo InUserInfo, FOnHttpRequestComplete OnComplete)
+void UGetDocumentsCommand::ExecuteHttpRequest(UUserData* UserInfo, FOnHttpRequestComplete OnComplete)
 {
-	FString URL = UAPI::ConstructUrl(InUserInfo.AccountId, InUserInfo.BaseUrl, UAPI::ROUTER_DOCUMENTS);
+	FString URL = UAPI::ConstructUrl(UserInfo->AccountId, UserInfo->Url, UAPI::ROUTER_DOCUMENTS);
 
 	TSharedRef<IHttpRequest, ESPMode::ThreadSafe> HttpRequest = FHttpModule::Get().CreateRequest();
 
@@ -17,8 +16,8 @@ void UGetDocumentsCommand::ExecuteHttpRequest(FUserInfo InUserInfo, FOnHttpReque
 	HttpRequest->SetURL(URL);
 	HttpRequest->SetVerb("POST");
 	HttpRequest->SetHeader(TEXT("Content-Type"), TEXT("application/x-www-form-urlencoded"));
-	HttpRequest->SetHeader(TEXT("X-Auth-Token"), InUserInfo.AuthToken);
-	HttpRequest->SetHeader(TEXT("X-Auth-AccountId"), InUserInfo.AccountId);
+	HttpRequest->SetHeader(TEXT("X-Auth-Token"), UserInfo->AuthToken);
+	HttpRequest->SetHeader(TEXT("X-Auth-AccountId"), UserInfo->AccountId);
 
 
 	// Bind the response handler

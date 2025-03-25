@@ -3,8 +3,8 @@
 #include "CoreMinimal.h"
 #include "Widgets/SCompoundWidget.h"
 #include "WordBeeEditor/Command/DocumentList/FDocumentData.h"
-#include "WordBeeEditor/Utils/UserInfo.h"
 
+class UUserData;
 DECLARE_DELEGATE_OneParam(FOnSubWindowClosedDelegate, FString);
 class SSelectorDocumentSubWindow : public SCompoundWidget
 {
@@ -15,13 +15,12 @@ public:
 
 	/** Constructs this widget with InArgs */
 	void Construct(const FArguments& InArgs);
-	void Init(const FUserInfo InUserInfo, const TArray<FDocumentData>& InDocumentData);
+	void Init(UUserData* InUserData, const TArray<FDocumentData>& InDocumentData);
 	FReply CloseWindow() const;
 
 private:
+	UUserData* UserData = nullptr;
 	TArray<FDocumentData> DocumentDataArray;
-	FUserInfo UserInfo;
-
 	TArray<TSharedPtr<FString>> Preferences;
 
 	TArray<TSharedPtr<FDocumentData>> FilteredDocuments;

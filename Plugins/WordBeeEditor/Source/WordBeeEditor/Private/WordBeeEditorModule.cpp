@@ -1,5 +1,8 @@
 #include "WordBeeEditorModule.h"
 
+#include "WordBeeEditor/Command/CreateDataAsset/CreateConfigDataAssetCommand.h"
+#include "WordBeeEditor/Command/CreateDataAsset/CreateUserDataAssetCommand.h"
+
 void FWordBeeEditorModule::StartupModule()
 {
 	FGlobalTabmanager::Get()->RegisterNomadTabSpawner(WordBeeConfigEditorTabName, FOnSpawnTab::CreateRaw(this, &FWordBeeEditorModule::OnSpawnPluginTab))
@@ -8,6 +11,8 @@ void FWordBeeEditorModule::StartupModule()
 
 	// Optionally, add a menu entry
 	UToolMenus::RegisterStartupCallback(FSimpleMulticastDelegate::FDelegate::CreateRaw(this, &FWordBeeEditorModule::RegisterMenus));
+
+
 	UE_LOG(LogTemp, Log, TEXT("WordBeeEditor: Successfully started up module!"));
 }
 
@@ -60,5 +65,7 @@ void FWordBeeEditorModule::RegisterMenus()
 
 void FWordBeeEditorModule::OnMenuButtonClicked()
 {
+	CreateUserDataAssetCommand::Execute();
+	CreateConfigDataAssetCommand::CreateConfigDataAsset();
 	FGlobalTabmanager::Get()->TryInvokeTab(WordBeeConfigEditorTabName);
 }

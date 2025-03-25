@@ -6,18 +6,18 @@
 #include "URequestExportDocumentCommand.h"
 #include "Interfaces/IHttpResponse.h"
 #include "WordBeeEditor/API/API.h"
-#include "WordBeeEditor/Utils/UserInfo.h"
 
-void ULinkDocumentCommand::Execute(FUserInfo InUserInfo, const FString DocumentId, FOnLinkDocumentComplete callback)
+void ULinkDocumentCommand::Execute(UUserData* UserInfo,  const FString DocumentId, FOnLinkDocumentComplete callback)
 {
-	URequestExportDocumentCommand::Execute(InUserInfo, DocumentId, FOnRequestExportDocumentComplete::CreateLambda(
+	
+	URequestExportDocumentCommand::Execute(UserInfo ,DocumentId, FOnRequestExportDocumentComplete::CreateLambda(
 [=](bool success, const FString& response)
        {
 			if (success)
 			{
 				UE_LOG(LogTemp, Warning, TEXT("ULinkDocumentCommand::Execute - %s"), *response);
 				FLinkDocumentResponseData ResponseData = ParseJsonResponse(response);
-				UPoolingCommand::Execute(InUserInfo, ResponseData.Trm.RequestId
+				UPoolingCommand::Execute(UserInfo, ResponseData.Trm.RequestId
 					,FOnPoolingComplete::CreateLambda([=](bool bSuccess, const FString& Response)
 					{
 						callback.ExecuteIfBound(true);

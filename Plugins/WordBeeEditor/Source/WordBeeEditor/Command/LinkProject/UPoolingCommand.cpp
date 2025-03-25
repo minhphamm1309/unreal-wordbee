@@ -5,8 +5,9 @@
 #include "Interfaces/IHttpRequest.h"
 #include "Interfaces/IHttpResponse.h"
 #include "WordBeeEditor/API/API.h"
+#include "WordBeeEditor/Command/CreateDataAsset/UserData.h"
 
-void UPoolingCommand::Execute(const FUserInfo UserInfo, const int32 RequestId, FOnPoolingComplete OnSuccess, FOnPoolingFail OnError)
+void UPoolingCommand::Execute(UUserData* UserInfo,  const int32 RequestId, FOnPoolingComplete OnSuccess, FOnPoolingFail OnError)
 {
 	constexpr float TimeOut = 10.f;
     constexpr int32 DelayCall = 1000; // ms
@@ -26,11 +27,10 @@ void UPoolingCommand::Execute(const FUserInfo UserInfo, const int32 RequestId, F
                 OnError.ExecuteIfBound(TEXT("Polling - Timeout Error"));
                 return;
             }
-
             TSharedRef<IHttpRequest, ESPMode::ThreadSafe> HttpRequest = FHttpModule::Get().CreateRequest();
     
             FString Router = UAPI::ROUTER_DOCUMENT_POOLING.Replace(TEXT("{0}"), *FString::FromInt(RequestId));
-            FString url = UAPI::ConstructUrl(UserInfo.AccountId, UserInfo.BaseUrl, Router);
+            FString url = UAPI::ConstructUrl(UserInfo->AccountId, UserInfo->Url, Router);
             // Thiết lập URL
             HttpRequest->SetURL(url);
 
@@ -38,8 +38,8 @@ void UPoolingCommand::Execute(const FUserInfo UserInfo, const int32 RequestId, F
             HttpRequest->SetVerb(TEXT("GET"));
     
             // Thiết lập các header
-            HttpRequest->SetHeader(TEXT("X-Auth-AccountId"), UserInfo.AccountId);
-            HttpRequest->SetHeader(TEXT("X-Auth-Token"), UserInfo.AuthToken);
+            HttpRequest->SetHeader(TEXT("X-Auth-AccountId"), UserInfo->AccountId);
+            HttpRequest->SetHeader(TEXT("X-Auth-Token"), UserInfo->AuthToken);
             HttpRequest->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
             
             HttpRequest->OnProcessRequestComplete().BindLambda([=](FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful)

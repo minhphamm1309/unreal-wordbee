@@ -3,11 +3,12 @@
 #include "HttpModule.h"
 #include "Interfaces/IHttpResponse.h"
 #include "WordBeeEditor/API/API.h"
+#include "WordBeeEditor/Command/CreateDataAsset/UserData.h"
 
 class IHttpRequest;
 class FHttpModule;
 
-void URequestExportDocumentCommand::Execute(const FUserInfo InUserInfo, const FString InDocumentId,
+void URequestExportDocumentCommand::Execute(const UUserData* InUserInfo, const FString InDocumentId,
                                             FOnRequestExportDocumentComplete callBack)
 {
 
@@ -18,7 +19,7 @@ void URequestExportDocumentCommand::Execute(const FUserInfo InUserInfo, const FS
 
 	FString router = UAPI::ROUTER_DOCUMENT_PULL.Replace(TEXT("{0}"), *InDocumentId);
 
-	FString url = UAPI::ConstructUrl(InUserInfo.AccountId, InUserInfo.BaseUrl, router);
+	FString url = UAPI::ConstructUrl(InUserInfo->AccountId, InUserInfo->Url, router);
 	// Đặt URL cho request
 	Request->SetURL(url);
 
@@ -27,8 +28,8 @@ void URequestExportDocumentCommand::Execute(const FUserInfo InUserInfo, const FS
 
 	// Đặt các Header
 	Request->SetHeader(TEXT("Content-Type"), TEXT("application/x-www-form-urlencoded"));
-	Request->SetHeader(TEXT("X-Auth-AccountId"), InUserInfo.AccountId);
-	Request->SetHeader(TEXT("X-Auth-Token"), InUserInfo.AuthToken);
+	Request->SetHeader(TEXT("X-Auth-AccountId"), InUserInfo->AccountId);
+	Request->SetHeader(TEXT("X-Auth-Token"), InUserInfo->AuthToken);
 
 	// Tạo một Dictionary JSON cho phần body (sử dụng JsonObject)
 	TSharedPtr<FJsonObject> JsonObject = MakeShareable(new FJsonObject());

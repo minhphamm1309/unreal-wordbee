@@ -15,12 +15,12 @@ public:
 
 	/** Constructs this widget with InArgs */
 	void Construct(const FArguments& InArgs);
-	void Init(const UserInfo InUserInfo, const TArray<FDocumentData>& InDocumentData);
+	void Init(const FUserInfo InUserInfo, const TArray<FDocumentData>& InDocumentData);
 	FReply CloseWindow() const;
 
 private:
 	TArray<FDocumentData> DocumentDataArray;
-	UserInfo UserInfo;
+	FUserInfo UserInfo;
 
 	TArray<TSharedPtr<FString>> Preferences;
 

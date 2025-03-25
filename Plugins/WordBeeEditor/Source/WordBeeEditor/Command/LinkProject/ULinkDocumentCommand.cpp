@@ -1,61 +1,46 @@
 #include "ULinkDocumentCommand.h"
 
 #include "HttpModule.h"
+#include "JsonObjectConverter.h"
+#include "URequestExportDocumentCommand.h"
+#include "Interfaces/IHttpResponse.h"
 #include "WordBeeEditor/API/API.h"
 #include "WordBeeEditor/Utils/UserInfo.h"
 
-void ULinkDocumentCommand::Execute(UserInfo InUserInfo,FOnLinkDocumentComplete callback)
+void ULinkDocumentCommand::Execute(FUserInfo InUserInfo, const FString DocumentId, FOnLinkDocumentComplete callback)
 {
-	FHttpModule* Http = &FHttpModule::Get();
-
-    // Tạo một Http Request
-    TSharedRef<IHttpRequest, ESPMode::ThreadSafe> Request = Http->CreateRequest();
-    FString url = UAPI::ConstructUrl(InUserInfo.AccountId, InUserInfo.BaseUrl, UAPI::ROUTER_DOCUMENTS);
-    // Đặt URL cho request
-    Request->SetURL(url);
-
-    // Đặt method cho request (POST, GET, etc.)
-    Request->SetVerb("POST");
-
-    // Đặt các Header
-    Request->SetHeader(TEXT("Content-Type"), TEXT("application/x-www-form-urlencoded"));
-    Request->SetHeader(TEXT("X-Auth-AccountId"), InUserInfo.AccountId);
-    Request->SetHeader(TEXT("X-Auth-Token"), InUserInfo.AuthToken);
-
-    // Tạo một Dictionary JSON cho phần body (sử dụng JsonObject)
-    TSharedPtr<FJsonObject> JsonObject = MakeShareable(new FJsonObject());
-
-    // Thêm các key-value vào body
-    JsonObject->SetBoolField(TEXT("includeComments"), true);
-    JsonObject->SetBoolField(TEXT("includeCustomFields"), true);
-    JsonObject->SetBoolField(TEXT("copySourceToTarget"), false);
-    JsonObject->SetBoolField(TEXT("excludeTexts"), "none"); // config.targetSynchronization là một biến boolean bạn định nghĩa trước đó
-
-    // Chuyển đổi JsonObject thành chuỗi JSON
-    FString RequestBody;
-    TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&RequestBody);
-    FJsonSerializer::Serialize(JsonObject.ToSharedRef(), Writer);
-
-    // Đặt body JSON vào Http Request
-    Request->SetContentAsString(RequestBody);
-
-    // Gán callback cho khi request hoàn thành
-    Request->OnProcessRequestComplete().BindLambda([](FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful)
-    {
-        if (bWasSuccessful && Response.IsValid())
-        {
-            
-        }
-        else
-        {
-            // Xử lý lỗi khi không gửi được request
-        }
-    });
-
-    // Thực hiện request
-    Request->ProcessRequest();
+	URequestExportDocumentCommand::Execute(InUserInfo, DocumentId, FOnRequestExportDocumentComplete::CreateLambda(
+[=](bool success, const FString& response)
+       {
+			if (success)
+			{
+				UE_LOG(LogTemp, Warning, TEXT("ULinkDocumentCommand::Execute - %s"), *response);
+				FResponseData ResponseData = ConvertResponseData(response);
+			}
+		    else
+			{
+				UE_LOG(LogTemp, Warning, TEXT("ULinkDocumentCommand::Execute - RequestExportDocumentCommand failed"));
+			}
+       }));
 }
 
-void ULinkDocumentCommand::OnResponseReceived(FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful)
+FResponseData ULinkDocumentCommand::ConvertResponseData(const FString& Response)
 {
+	FResponseData ResponseData;
+
+	// Chuyển đổi chuỗi JSON thành struct
+	// if (FJsonObjectConverter::JsonObjectStringToUStruct<FResponseData>(Response, &ResponseData, 0, 0))
+	// {
+	// 	// Chuyển đổi thành công, bạn có thể truy cập các trường của ResponseData
+	// 	UE_LOG(LogTemp, Log, TEXT("Request ID: %d"), ResponseData.Trm.RequestId);
+	// 	UE_LOG(LogTemp, Log, TEXT("Is Batch: %s"), ResponseData.Trm.IsBatch ? TEXT("true") : TEXT("false"));
+	// 	UE_LOG(LogTemp, Log, TEXT("Status: %s"), *ResponseData.Trm.Status);
+	// 	UE_LOG(LogTemp, Log, TEXT("Status Text: %s"), *ResponseData.Trm.StatusText);
+	// }
+	// else
+	// {
+	// 	UE_LOG(LogTemp, Error, TEXT("Failed to convert JSON to struct"));
+	// }
+	return ResponseData;
 }
+

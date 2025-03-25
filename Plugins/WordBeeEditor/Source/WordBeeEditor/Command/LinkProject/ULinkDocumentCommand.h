@@ -3,20 +3,31 @@
 #include "CoreMinimal.h"
 #include "Interfaces/IHttpRequest.h"
 #include "WordBeeEditor/Utils/UserInfo.h"
-#include "ULinkDocumentCommand.generated.h"
 
 DECLARE_DELEGATE_OneParam(FOnLinkDocumentComplete, bool);
 
-UCLASS()
-class ULinkDocumentCommand : public UObject
+struct FTrmData
 {
-	GENERATED_BODY()
+	int32 RequestId;
+
+	bool IsBatch;
+
+	FString Status;
+
+	FString StatusText;
+};
+
+struct FResponseData
+{
+	FTrmData Trm;
+};
+
+class ULinkDocumentCommand 
+{
 public:
-	void Execute(UserInfo InUserInfo, FOnLinkDocumentComplete callback);
+	static void Execute(FUserInfo InUserInfo, FString DocumentId, FOnLinkDocumentComplete callback);
 
 protected:
-	// Callback when the HTTP request completes
-	void OnResponseReceived(FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful);
-
-	FOnLinkDocumentComplete OnCompleteDelegate;
+	static  FResponseData ConvertResponseData(const FString& Response);
 };
+

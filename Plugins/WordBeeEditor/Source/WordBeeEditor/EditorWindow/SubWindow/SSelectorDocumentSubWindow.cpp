@@ -114,7 +114,7 @@ void SSelectorDocumentSubWindow::OnDocumentSelected(TSharedPtr<FDocumentData> Se
 	DocumentId = SelectedItem->Id;
 }
 
-void SSelectorDocumentSubWindow::Init(const struct UserInfo InUserInfo,const TArray<FDocumentData>& InDocumentData)
+void SSelectorDocumentSubWindow::Init(const struct FUserInfo InUserInfo,const TArray<FDocumentData>& InDocumentData)
 {
 	DocumentDataArray = InDocumentData;
 	UserInfo = InUserInfo;
@@ -142,8 +142,7 @@ FReply SSelectorDocumentSubWindow::CloseWindow() const
 	{
 		if (!DocumentId.IsEmpty())
 		{
-			ULinkDocumentCommand* LinkDocumentCommand = NewObject<ULinkDocumentCommand>();
-			LinkDocumentCommand->Execute(UserInfo, FOnLinkDocumentComplete::CreateLambda([this](bool bSuccess)
+			ULinkDocumentCommand::Execute(UserInfo, DocumentId, FOnLinkDocumentComplete::CreateLambda([this](bool bSuccess)
 			{
 				OnSubWindowClosed.Execute(DocumentId);
 			}));

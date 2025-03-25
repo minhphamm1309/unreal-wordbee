@@ -1,6 +1,6 @@
 #pragma once
 
-struct UserInfo
+struct FUserInfo
 {
 public:
 	FString AccountId;

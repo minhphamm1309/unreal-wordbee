@@ -300,9 +300,7 @@ void SConnectTab::LoadSettings() const
 
 void SConnectTab::LoadDocumentSettings()
 {
-	UGetDocumentsCommand* HttpCommand = NewObject<UGetDocumentsCommand>();
-
-	HttpCommand->ExecuteHttpRequest(UserInfo, FOnHttpRequestComplete::CreateSP(this, &SConnectTab::OnFetchDocumentsResponseReceived));
+	UGetDocumentsCommand::ExecuteHttpRequest(UserInfo, FOnHttpRequestComplete::CreateSP(this, &SConnectTab::OnFetchDocumentsResponseReceived));
 }
 
 bool SConnectTab::HasDocumentsFetched() const

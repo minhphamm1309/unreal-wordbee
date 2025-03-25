@@ -30,7 +30,7 @@ private:
 	TSharedPtr<STextBlock> ResponseTextBlock;
 	TArray<FDocumentData> DocumentsData;
 	
-	UserInfo UserInfo;
+	FUserInfo UserInfo;
 	bool bConnecting = false;
 	FText ButtonConnectStateText;
 	bool bIsAuthenticated = false;

@@ -12,7 +12,8 @@ UUserData* SUserData::Get()
 		if (Instance == nullptr)
 		{
 			UE_LOG(LogTemp, Warning, TEXT("Failed to create Blueprint"));
-			return nullptr;
+			Instance = NewObject<UUserData>();
+			return Instance;
 		}
 	}
 	return Instance;

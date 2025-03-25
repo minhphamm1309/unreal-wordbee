@@ -16,6 +16,8 @@ const FString UAPI::ROUTER_DOCUMENT_PULL = "api/apps/wbflex/documents/{0}/conten
 const FString UAPI::ROUTER_DOCUMENT = "api/apps/wbflex/documents/";
 const FString UAPI::ROUTER_POLL = "api/trm/status?requestid={0}";
 const FString UAPI::ROUTER_DownloadDocument = "api/media/get/{0}";
+const FString UAPI::ROUTER_DOCUMENT_POOLING = "api/trm/status?requestid={0}";
+
 void UAPI::Authenticate(FString AccountId, FString ApiKey, FString BaseUrl , FOnAuthCompleted callback)
 {
 	FString URL = ConstructUrl(AccountId, BaseUrl, ROUTER_AUTH);
@@ -101,23 +103,23 @@ void UAPI::OnAuthResponseReceived(FHttpRequestPtr Request, FHttpResponsePtr Resp
 		OnAuthCompleted.Execute(ResponseAuthToken);
 	}
 }
-void UAPI::FetchDocumentById(const UserInfo& userInfo, const FString& DocumentId, TFunction<void(const FDocumentInfo&)> Callback)
+void UAPI::FetchDocumentById(UUserData* userInfo, const FString& DocumentId, TFunction<void(const FDocumentInfo&)> Callback)
 {
-	if (userInfo.AccountId.IsEmpty() || userInfo.AuthToken.IsEmpty())
+	if (userInfo->AccountId.IsEmpty() || userInfo->AuthToken.IsEmpty())
 	{
 		UE_LOG(LogTemp, Error, TEXT("Invalid user data. Cannot fetch document."));
 		return;
 	}
 
-	FString Url = ConstructUrl(userInfo.AccountId, userInfo.BaseUrl, ROUTER_DOCUMENT+DocumentId);
+	FString Url = ConstructUrl(userInfo->AccountId, userInfo->Url, ROUTER_DOCUMENT+DocumentId);
 	UE_LOG(LogTemp, Log, TEXT("Fetching document info from %s"), *Url);
 
 	TSharedRef<IHttpRequest, ESPMode::ThreadSafe> Request = FHttpModule::Get().CreateRequest();
 	Request->SetURL(Url);
 	Request->SetVerb(TEXT("GET"));
 	Request->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
-	Request->SetHeader(APIConstant::AuthToken, userInfo.AuthToken);
-	Request->SetHeader(APIConstant::AuthAccountID, userInfo.AccountId);
+	Request->SetHeader(APIConstant::AuthToken, userInfo->AuthToken);
+	Request->SetHeader(APIConstant::AuthAccountID, userInfo->AccountId);
 
 	Request->OnProcessRequestComplete().BindLambda([Callback](FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful)
 	{
@@ -140,16 +142,16 @@ void UAPI::FetchDocumentById(const UserInfo& userInfo, const FString& DocumentId
 
 	Request->ProcessRequest();
 }
-void UAPI::PullDocument(UserInfo& userInfo, const FString& DocumentId)
+void UAPI::PullDocument(UUserData* userInfo, const FString& DocumentId)
 {
 	TSharedRef<IHttpRequest, ESPMode::ThreadSafe> Request = FHttpModule::Get().CreateRequest();
-	FString url = ConstructUrl(userInfo.AccountId, userInfo.BaseUrl, FString::Format(*ROUTER_DOCUMENT_PULL, { DocumentId }));
+	FString url = ConstructUrl(userInfo->AccountId, userInfo->Url, FString::Format(*ROUTER_DOCUMENT_PULL, { DocumentId }));
 	Request->SetURL(url);
 	Request->SetVerb(TEXT("POST"));
 	Request->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
 	Request->SetContentAsString(TEXT("{ \"includeComments\": true, \"includeCustomFields\": true, \"copySourceToTarget\": false }"));
 
-	Request->OnProcessRequestComplete().BindLambda([&userInfo](FHttpRequestPtr Req, FHttpResponsePtr Res, bool bSuccess)
+	Request->OnProcessRequestComplete().BindLambda([userInfo](FHttpRequestPtr Req, FHttpResponsePtr Res, bool bSuccess)
 	{
 		if (bSuccess && Res.IsValid())
 		{
@@ -164,7 +166,7 @@ void UAPI::PullDocument(UserInfo& userInfo, const FString& DocumentId)
 	});
 	Request->ProcessRequest();
 }
-void UAPI::CheckStatus(UserInfo& userInfo, int32 RequestId, int32 RetryCount)
+void UAPI::CheckStatus(UUserData* userInfo, int32 RequestId, int32 RetryCount)
 {
 	const int32 MaxRetries = 15; // Stop checking after 15 retries (~30 seconds)
 	if (RequestId == 0 || RetryCount >= MaxRetries)
@@ -173,11 +175,11 @@ void UAPI::CheckStatus(UserInfo& userInfo, int32 RequestId, int32 RetryCount)
 		return;
 	}
 	TSharedRef<IHttpRequest, ESPMode::ThreadSafe> Request = FHttpModule::Get().CreateRequest();
-	FString url = ConstructUrl(userInfo.AccountId, userInfo.BaseUrl, FString::Format(*ROUTER_POLL, { RequestId }));
+	FString url = ConstructUrl(userInfo->AccountId, userInfo->Url, FString::Format(*ROUTER_POLL, { RequestId }));
 	Request->SetURL(url);
 	Request->SetVerb(TEXT("GET"));
 
-	Request->OnProcessRequestComplete().BindLambda([RequestId, RetryCount, &userInfo](FHttpRequestPtr Req, FHttpResponsePtr Res, bool bSuccess)
+	Request->OnProcessRequestComplete().BindLambda([RequestId, RetryCount, userInfo](FHttpRequestPtr Req, FHttpResponsePtr Res, bool bSuccess)
 	{
 		if (bSuccess && Res.IsValid())
 		{
@@ -206,10 +208,10 @@ void UAPI::CheckStatus(UserInfo& userInfo, int32 RequestId, int32 RetryCount)
 	});
 	Request->ProcessRequest();
 }
-void UAPI::DownloadFile(UserInfo& userInfo, const FString& FileToken)
+void UAPI::DownloadFile(UUserData* userInfo, const FString& FileToken)
 {
 	TSharedRef<IHttpRequest, ESPMode::ThreadSafe> Request = FHttpModule::Get().CreateRequest();
-	FString url = ConstructUrl(userInfo.AccountId, userInfo.BaseUrl, FString::Format(*ROUTER_DownloadDocument, { FileToken }));
+	FString url = ConstructUrl(userInfo->AccountId, userInfo->Url, FString::Format(*ROUTER_DownloadDocument, { FileToken }));
 	Request->SetURL(url);
 	Request->SetVerb(TEXT("GET"));
 

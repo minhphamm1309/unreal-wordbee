@@ -22,7 +22,13 @@ public class WordBeeEditor : ModuleRules
 				"Http", 
 				"Json", 
 				"JsonUtilities",
-				"EditorScriptingUtilities"
+				"EditorScriptingUtilities",
+				"JsonUtilities",
+				"AITestSuite", 
+				"EditorScriptingUtilities",
+				"AssetTools",
+				"KismetCompiler"
+
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);

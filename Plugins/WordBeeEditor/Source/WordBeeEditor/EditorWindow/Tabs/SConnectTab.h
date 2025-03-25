@@ -1,6 +1,7 @@
 #pragma once
 #include "WordBeeEditor/Command/DocumentList/FDocumentData.h"
-#include "WordBeeEditor/Utils/UserInfo.h"
+#include "WordBeeEditor/Command/CreateDataAsset/UserData.h"
+#include "WordBeeEditor/Command/DocumentList/FDocumentData.h"
 
 
 class SConnectTab : public SCompoundWidget 
@@ -30,7 +31,7 @@ private:
 	TSharedPtr<STextBlock> ResponseTextBlock;
 	TArray<FDocumentData> DocumentsData;
 	
-	UserInfo UserInfo;
+	UUserData* UserInfo;
 	bool bConnecting = false;
 	FText ButtonConnectStateText;
 	bool bIsAuthenticated = false;
@@ -42,7 +43,7 @@ private:
 
 	void OnCompletedAuth(FString ResponseString);
 	bool HasAuthenticatingCredentials() const;
-	void SaveSettings() const;
+	void SaveSettings();
 	void LoadSettings() const;
 	void LoadDocumentSettings();
 	bool HasDocumentsFetched() const;

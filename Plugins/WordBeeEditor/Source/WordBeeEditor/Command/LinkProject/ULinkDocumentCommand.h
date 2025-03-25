@@ -1,22 +1,18 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "FLinkDocumentResponseData.h"
 #include "Interfaces/IHttpRequest.h"
-#include "WordBeeEditor/Utils/UserInfo.h"
-#include "ULinkDocumentCommand.generated.h"
+#include "WordBeeEditor/Command/CreateDataAsset/UserData.h"
 
 DECLARE_DELEGATE_OneParam(FOnLinkDocumentComplete, bool);
 
-UCLASS()
-class ULinkDocumentCommand : public UObject
+class ULinkDocumentCommand 
 {
-	GENERATED_BODY()
 public:
-	void Execute(UserInfo InUserInfo, FOnLinkDocumentComplete callback);
+	static void Execute(UUserData* UserInfo,  FString DocumentId, FOnLinkDocumentComplete callback);
 
 protected:
-	// Callback when the HTTP request completes
-	void OnResponseReceived(FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful);
-
-	FOnLinkDocumentComplete OnCompleteDelegate;
+	static  FLinkDocumentResponseData ParseJsonResponse(const FString& Response);
 };
+

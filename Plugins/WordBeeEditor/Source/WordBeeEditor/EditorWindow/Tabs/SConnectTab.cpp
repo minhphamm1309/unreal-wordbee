@@ -1,11 +1,15 @@
 #include "SConnectTab.h"
 
 #include "WordBeeEditor/API/API.h"
+#include "WordBeeEditor/Command/CreateDataAsset/CreateConfigDataAssetCommand.h"
+#include "WordBeeEditor/Command/CreateDataAsset/SUserData.h"
+#include "WordBeeEditor/Command/DocumentList/UGetDocumentsCommand.h"
 #include "WordBeeEditor/Command/DocumentList/UGetDocumentsCommand.h"
 #include "WordBeeEditor/EditorWindow/SubWindow/SSelectorDocumentSubWindow.h"
 
 void SConnectTab::Construct(const FArguments& InArgs)
 {
+	UserInfo = SUserData::Get();
 	SetConnectingState(false);
 	ChildSlot
 	[
@@ -15,7 +19,7 @@ void SConnectTab::Construct(const FArguments& InArgs)
 		+ SVerticalBox::Slot()
 		.AutoHeight()
 		[
-			SAssignNew(ConnectionPanel,SBorder)
+			SAssignNew(ConnectionPanel, SBorder)
 			[
 				SNew(SVerticalBox)
 				// IP Address Label and TextBox
@@ -36,9 +40,10 @@ void SConnectTab::Construct(const FArguments& InArgs)
 					.Padding(5)
 					[
 						SNew(SButton)
-						.Text(this, &SConnectTab::GetButtonText)  // Bind the button text to the current state
-						.IsEnabled(this, &SConnectTab::IsConnectButtonEnabled)  // Bind button enabled state
-						.OnClicked(this, &SConnectTab::OnConnectButtonClicked)
+						             .Text(this, &SConnectTab::GetButtonText)
+ // Bind the button text to the current state
+						             .IsEnabled(this, &SConnectTab::IsConnectButtonEnabled) // Bind button enabled state
+						             .OnClicked(this, &SConnectTab::OnConnectButtonClicked)
 					]
 				]
 				+ SVerticalBox::Slot()
@@ -88,8 +93,8 @@ void SConnectTab::Construct(const FArguments& InArgs)
 				.Padding(5)
 				[
 					SAssignNew(ResponseTextBlock, STextBlock)
-					.Text(FText::GetEmpty())  // Initially empty
-					.Visibility(EVisibility::Collapsed)  // Initially hidden
+					                                         .Text(FText::GetEmpty()) // Initially empty
+					                                         .Visibility(EVisibility::Collapsed) // Initially hidden
 				]
 			]
 		]
@@ -126,9 +131,10 @@ void SConnectTab::Construct(const FArguments& InArgs)
 					.Padding(5)
 					[
 						SNew(SButton)
-						.Text(FText::FromString("Select Document"))  // Bind the button text to the current state
-						.IsEnabled(this, &SConnectTab::HasDocumentsFetched)  // Bind button enabled state
-						.OnClicked(this, &SConnectTab::OnSelectDocumentClicked)
+						             .Text(FText::FromString("Select Document"))
+ // Bind the button text to the current state
+						             .IsEnabled(this, &SConnectTab::HasDocumentsFetched) // Bind button enabled state
+						             .OnClicked(this, &SConnectTab::OnSelectDocumentClicked)
 					]
 				]
 
@@ -141,7 +147,7 @@ void SConnectTab::Construct(const FArguments& InArgs)
 					.HintText(FText::FromString("Enter document ID"))
 					.IsEnabled(this, &SConnectTab::HasAuthenticatingCredentials)
 				]
-				
+
 				+ SVerticalBox::Slot()
 				.AutoHeight()
 				.Padding(5)
@@ -152,9 +158,10 @@ void SConnectTab::Construct(const FArguments& InArgs)
 					.Padding(5)
 					[
 						SNew(SButton)
-						.Text(FText::FromString("Link"))  // Bind the button text to the current state
-						.IsEnabled(this, &SConnectTab::HasAuthenticatingCredentials)  // Bind button enabled state
-						.OnClicked(this, &SConnectTab::OnLinkDocumentClicked)
+						             .Text(FText::FromString("Link")) // Bind the button text to the current state
+						             .IsEnabled(this, &SConnectTab::HasAuthenticatingCredentials)
+ // Bind button enabled state
+						             .OnClicked(this, &SConnectTab::OnLinkDocumentClicked)
 					]
 				]
 			]
@@ -163,7 +170,7 @@ void SConnectTab::Construct(const FArguments& InArgs)
 
 	GEditor->GetTimerManager()->SetTimerForNextTick([this]()
 	{
-		LoadSettings();  // Load the settings after a short delay
+		LoadSettings(); // Load the settings after a short delay
 	});
 }
 
@@ -188,13 +195,18 @@ FReply SConnectTab::OnSelectDocumentClicked()
 	LinkPanel->SetVisibility(EVisibility::Collapsed);
 	auto subView = SNew(SSelectorDocumentSubWindow)
 		.OnSubWindowClosed(FOnSubWindowClosedDelegate::CreateSP(this, &SConnectTab::OnSubWindowClosed));
-	subView->Init(DocumentsData);
+	subView->Init(UserInfo ,DocumentsData);
 	SubWindow->SetContent(subView);
 	return FReply::Handled();
 }
 
 FReply SConnectTab::OnLinkDocumentClicked()
 {
+	if (DocumentId.IsValid())
+	{
+		FString SDocumentId = DocumentId->GetText().ToString();
+		UserInfo->Did = SDocumentId; // Save Document ID to UserInfo
+	}
 	return FReply::Handled();
 }
 
@@ -205,7 +217,6 @@ void SConnectTab::SetConnectingState(bool bConnecting)
 
 	// Change the button text based on the state
 	ButtonConnectStateText = bConnecting ? FText::FromString("Connecting...") : FText::FromString("Test Credentials");
-
 }
 
 FText SConnectTab::GetButtonText() const
@@ -233,10 +244,9 @@ void SConnectTab::OnCompletedAuth(FString ResponseString)
 		ResponseTextBlock->SetText(FText::FromString(AuthToken));
 		ResponseTextBlock->SetVisibility(EVisibility::Visible);
 		bIsAuthenticated = true;
-		UserInfo.AccountId = AccountId->GetText().ToString();
-		UserInfo.ApiKey = APIKey->GetText().ToString();
-		UserInfo.BaseUrl = URL->GetText().ToString();
-		UserInfo.AuthToken = ResponseString.TrimChar('"');
+
+		UserInfo->AuthToken = ResponseString.TrimChar('"');
+		SaveSettings();
 		LoadDocumentSettings();
 	}
 }
@@ -246,17 +256,29 @@ bool SConnectTab::HasAuthenticatingCredentials() const
 	return bIsAuthenticated;
 }
 
-void SConnectTab::SaveSettings() const
+void SConnectTab::SaveSettings()
 {
+	UserInfo = SUserData::Get();
 	FString ConfigSection = TEXT("ConnectSettings");
-	
+
 	FString CustomIniPath = FPaths::ProjectSavedDir() + "WordBee/Settings.ini";
 	IFileManager::Get().MakeDirectory(*FPaths::GetPath(CustomIniPath), true);
 
 	FConfigFile ConfigFile;
+
+	// UserInfo.AccountId = *AccountId->GetText().ToString();
+	// UserInfo.ApiKey = *APIKey->GetText().ToString();
+	// UserInfo.BaseUrl = *URL->GetText().ToString();
 	ConfigFile.SetString(*ConfigSection, TEXT("url"), *URL->GetText().ToString());
-	ConfigFile.SetString(*ConfigSection, TEXT("ApiKey"), *APIKey->GetText().ToString());
+	UserInfo->Url = *URL->GetText().ToString();
+
 	ConfigFile.SetString(*ConfigSection, TEXT("AccountId"), *AccountId->GetText().ToString());
+	UserInfo->AccountId = *AccountId->GetText().ToString();
+
+	ConfigFile.SetString(*ConfigSection, TEXT("ApiKey"), *APIKey->GetText().ToString());
+	UserInfo->ApiKey = *APIKey->GetText().ToString();
+
+	ConfigFile.SetString(*ConfigSection, TEXT("AuthToken"), *UserInfo->AuthToken);
 
 	// Write the config file to disk
 	ConfigFile.Write(CustomIniPath);
@@ -275,7 +297,7 @@ void SConnectTab::LoadSettings() const
 
 	// Read the config file from disk
 	ConfigFile.Read(CustomIniPath);
-	
+
 	FString SUrl;
 	if (ConfigFile.GetString(*ConfigSection, TEXT("url"), SUrl))
 	{
@@ -300,14 +322,13 @@ void SConnectTab::LoadSettings() const
 
 void SConnectTab::LoadDocumentSettings()
 {
-	UGetDocumentsCommand* HttpCommand = NewObject<UGetDocumentsCommand>();
-
-	HttpCommand->ExecuteHttpRequest(UserInfo, FOnHttpRequestComplete::CreateSP(this, &SConnectTab::OnFetchDocumentsResponseReceived));
+	UGetDocumentsCommand::ExecuteHttpRequest( UserInfo,
+		 FOnHttpRequestComplete::CreateSP(this, &SConnectTab::OnFetchDocumentsResponseReceived));
 }
 
 bool SConnectTab::HasDocumentsFetched() const
 {
-	return  bIsDocumentsFetched;
+	return bIsDocumentsFetched;
 }
 
 void SConnectTab::SetDocumentsFetched()
@@ -315,7 +336,7 @@ void SConnectTab::SetDocumentsFetched()
 	bIsDocumentsFetched = true;
 }
 
-void SConnectTab::OnFetchDocumentsResponseReceived( const TArray<FDocumentData>& response)
+void SConnectTab::OnFetchDocumentsResponseReceived(const TArray<FDocumentData>& response)
 {
 	if (response.Num() != 0)
 	{
@@ -337,4 +358,3 @@ void SConnectTab::OnSubWindowClosed(FString InDocumentId)
 	SubWindow->SetVisibility(EVisibility::Collapsed);
 	LinkPanel->SetVisibility(EVisibility::Visible);
 }
-

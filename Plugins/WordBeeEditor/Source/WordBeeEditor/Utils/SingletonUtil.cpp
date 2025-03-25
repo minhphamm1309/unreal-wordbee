@@ -1,7 +1,6 @@
 #include "SingletonUtil.h"
 #include "Engine/DataAsset.h"
 #include "EditorAssetLibrary.h"
-#include "WordBeeEditor/Models/UserData.h"
 template <typename T>
 T* SingletonUtil::GetOrCreateAsset(const FString& AssetPath)
 {
@@ -25,5 +24,3 @@ T* SingletonUtil::GetOrCreateAsset(const FString& AssetPath)
     return Asset;
 }
 
-// Explicit template instantiation to avoid linker errors
-template UserData* SingletonUtil::GetOrCreateAsset<UserData>(const FString&);

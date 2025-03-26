@@ -17,7 +17,7 @@ const FString UAPI::ROUTER_DOCUMENT = "api/apps/wbflex/documents/";
 const FString UAPI::ROUTER_POLL = "api/trm/status?requestid={0}";
 const FString UAPI::ROUTER_DownloadDocument = "api/media/get/{0}";
 const FString UAPI::ROUTER_DOCUMENT_POOLING = "api/trm/status?requestid={0}";
-
+const FString UAPI::ROUTER_PROJECT_LOCALES = "api/projects/{0}/locales";
 void UAPI::Authenticate(FString AccountId, FString ApiKey, FString BaseUrl , FOnAuthCompleted callback)
 {
 	FString URL = ConstructUrl(AccountId, BaseUrl, ROUTER_AUTH);
@@ -224,7 +224,38 @@ void UAPI::DownloadFile(UUserData* userInfo, const FString& FileToken)
 	});
 	Request->ProcessRequest();
 }
-
+void UAPI::FetchLanguages(UUserData* userInfo, TFunction<void(const TArray<FLanguageInfo>&)> OnSuccess)
+{
+	TSharedRef<IHttpRequest, ESPMode::ThreadSafe> Request = FHttpModule::Get().CreateRequest();
+	FString url = ConstructUrl(userInfo->AccountId, userInfo->Url, FString::Format(*ROUTER_PROJECT_LOCALES, {3191}));
+	Request->SetURL(url);
+	UE_LOG(LogTemp, Log, TEXT("Fetching languages with user info:"));
+	Request->SetVerb(TEXT("GET"));
+	Request->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
+	Request->SetHeader(APIConstant::AuthToken, userInfo->AuthToken);
+	Request->SetHeader(APIConstant::AuthAccountID, userInfo->AccountId);
+	Request->OnProcessRequestComplete().BindLambda([OnSuccess](FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful)
+	{
+		if (bWasSuccessful && Response.IsValid() && Response->GetResponseCode() == 200)
+		{
+			TArray<FLanguageInfo> LanguageList;
+			FString ResponseString = Response->GetContentAsString();
+			if (FJsonObjectConverter::JsonArrayStringToUStruct(ResponseString, &LanguageList, 0, 0))
+			{
+				OnSuccess(LanguageList);
+			}
+			else
+			{
+				UE_LOG(LogTemp, Error, TEXT("Failed to parse JSON into FLanguageInfo array"));
+			}
+		}
+		else
+		{
+			UE_LOG(LogTemp, Error, TEXT("Failed to fetch languages! Response Code: %d"), Response.IsValid() ? Response->GetResponseCode() : -1);
+		}
+	});
+	Request->ProcessRequest();
+}
 
 
 

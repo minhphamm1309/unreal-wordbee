@@ -9,4 +9,5 @@ public:
 
 private:
 	static UUserData* Instance;
+	static void LoadSettingsIntoUserData(UUserData* UserData);
 };

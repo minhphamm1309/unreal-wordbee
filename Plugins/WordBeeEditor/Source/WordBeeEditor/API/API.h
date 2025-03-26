@@ -22,7 +22,7 @@ public :
 	static const FString ROUTER_POLL;
 	static const FString ROUTER_DownloadDocument;
 	static const FString ROUTER_DOCUMENT_POOLING ;
-	
+	static const FString ROUTER_PROJECT_LOCALES;
 public:
 	void Authenticate(FString AccountId, FString ApiKey, FString BaseUrl, FOnAuthCompleted callback);
 	static FString ConstructUrl(FString AccountId, FString BaseUrl, FString Router);
@@ -30,6 +30,7 @@ public:
 	static void PullDocument(UUserData* userInfo, const FString& DocumentId);
 	static void CheckStatus(UUserData* userInfo, int32 RequestId, int32 RetryCount = 0);
 	static void DownloadFile(UUserData* userInfo, const FString& FileToken);
+	static void FetchLanguages(UUserData* userInfo, TFunction<void(const TArray<FLanguageInfo>&)> OnSuccess);
 private:
 	FOnAuthCompleted OnAuthCompleted;
 	void OnAuthResponseReceived(FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful);

@@ -3,11 +3,55 @@
 #include "PropertyCustomizationHelpers.h"
 #include "Widgets/Input/SFilePathPicker.h"
 #include "Styling/AppStyle.h"  // Replaces FEditorStyle for UE5 compatibility
+#include "WordbeeEditor/API/API.h"
 #include "Internationalization/StringTable.h"
+#include "WordBeeEditor/Command/CreateDataAsset/SUserData.h"
 
 void SEditorConfigWidget::Construct(const FArguments& InArgs)
 {
 	Config.Load();
+	MissingLocales.Empty(); // Clear previous items
+	CommonLocales.Empty();
+	UUserData* userInfo = SUserData::Get();
+	UAPI::FetchLanguages(userInfo, [this](const TArray<FLanguageInfo>& Languages)
+{
+	UE_LOG(LogTemp, Log, TEXT("Language fetch success"));
+    
+	// Get available cultures in Unreal's localization system, include derived cultures
+	TArray<FString> UnrealLocales;
+	FInternationalization::Get().GetAvailableCultures(UnrealLocales, true); // Set true to include derived cultures
+
+	MissingLocales.Empty();
+	CommonLocales.Empty(); // Clear out the CommonLocales array
+
+	for (const FString& UnrealLocale : UnrealLocales)
+	{
+		// Check if Unreal's locale is missing in the API response
+		bool bIsMissing = !Languages.ContainsByPredicate([&UnrealLocale](const FLanguageInfo& Lang)
+		{
+			return Lang.V == UnrealLocale;
+		});
+
+		if (bIsMissing)
+		{
+			FLanguageInfo NewLang;
+			NewLang.V = UnrealLocale;
+			MissingLocales.Add(MakeShared<FLanguageInfo>(NewLang));
+
+			UE_LOG(LogTemp, Log, TEXT("Added missing language: %s"), *UnrealLocale);
+		}
+		else
+		{
+			// If the language exists, add it to CommonLocales
+			FLanguageInfo CommonLang;
+			CommonLang.V = UnrealLocale;
+			CommonLocales.Add(MakeShared<FLanguageInfo>(CommonLang));
+
+			UE_LOG(LogTemp, Log, TEXT("Added common language: %s"), *UnrealLocale);
+		}
+	}
+});
+
 
 	TargetSyncOptions = {
 		MakeShared<FString>(TEXT("IfAnyProblem")),
@@ -15,7 +59,6 @@ void SEditorConfigWidget::Construct(const FArguments& InArgs)
 		MakeShared<FString>(TEXT("IfNotAllOk")),
 		MakeShared<FString>(TEXT("None"))
 	};
-
 	ChildSlot
 	[
 		SNew(SScrollBox)
@@ -126,9 +169,10 @@ void SEditorConfigWidget::Construct(const FArguments& InArgs)
 			[
 				SNew(SObjectPropertyEntryBox)
 				.AllowedClass(UStringTable::StaticClass())
-				.ObjectPath(TAttribute<FString>::Create([this]() -> FString {
-		return Config.SelectedCollectionPath;
-	}))
+				.ObjectPath(TAttribute<FString>::Create([this]() -> FString
+				{
+					return Config.SelectedCollectionPath;
+				}))
 				.OnObjectChanged(this, &SEditorConfigWidget::OnStringTableSelected)
 			]
 			// Save Button
@@ -140,8 +184,89 @@ void SEditorConfigWidget::Construct(const FArguments& InArgs)
 				.Text(FText::FromString("Save"))
 				.OnClicked(this, &SEditorConfigWidget::OnSaveClicked)
 			]
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(5)
+			[
+				SNew(SComboBox<TSharedPtr<FLanguageInfo>>)
+				.OptionsSource(&MissingLocales)
+				.OnGenerateWidget(this, &SEditorConfigWidget::GenerateLanguageOption)
+				[
+					SNew(STextBlock)
+					                .Text(FText::FromString("Missing Languages")) // Default display text
+					                .Font(FAppStyle::Get().GetFontStyle("NormalFont"))
+				]
+			]
+			// Language Selection Label with Checkbox
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(5)
+			[
+				SNew(SHorizontalBox) 
+				// Label
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				.Padding(5)
+				[
+					SNew(STextBlock)
+					.Text(FText::FromString("Select Languages"))
+					.Font(FAppStyle::Get().GetFontStyle("NormalFont"))
+				]
+				// Checkbox
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				.Padding(5)
+				[
+					SNew(SCheckBox)
+					.OnCheckStateChanged(this, &SEditorConfigWidget::OnLanguageCheckboxChanged)
+				]
+			]
+
+			// Language Selection List with Checkboxes
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(5)
+			[
+				SNew(SVerticalBox)
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(5)
+				[
+					SNew(SListView<TSharedPtr<FLanguageInfo>>)
+					.ItemHeight(24)
+					.ListItemsSource(&CommonLocales)
+					.OnGenerateRow(this, &SEditorConfigWidget::GenerateLanguageCheckbox)
+				]
+			]
+
 		]
 	];
+}
+
+TSharedRef<ITableRow> SEditorConfigWidget::GenerateLanguageCheckbox(TSharedPtr<FLanguageInfo> Item, const TSharedRef<STableViewBase>& OwnerTable)
+{
+	return SNew(STableRow<TSharedPtr<FLanguageInfo>>, OwnerTable)
+		[
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			[
+				SNew(SCheckBox)
+				.IsChecked_Lambda([this, Item]() -> ECheckBoxState
+				{
+					return Item->IsSelected ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
+				})
+				.OnCheckStateChanged_Lambda([this, Item](ECheckBoxState NewState)
+				{
+					// Update the IsSelected property of the language
+					Item->IsSelected = (NewState == ECheckBoxState::Checked);
+				})
+				[
+					SNew(STextBlock)
+					.Text(FText::FromString(Item->T))
+				]
+			]
+		];
 }
 
 void SEditorConfigWidget::OnAutoSyncChanged(ECheckBoxState NewState)
@@ -161,6 +286,7 @@ void SEditorConfigWidget::OnTargetSyncChanged(TSharedPtr<FString> NewValue, ESel
 		Config.TargetSynchronization = *NewValue;
 	}
 }
+
 TSharedPtr<FString> SEditorConfigWidget::GetCurrentTargetSyncOption() const
 {
 	for (const TSharedPtr<FString>& Option : TargetSyncOptions)
@@ -182,9 +308,37 @@ void SEditorConfigWidget::OnStringTableSelected(const FAssetData& AssetData)
 {
 	Config.SelectedCollectionPath = AssetData.GetObjectPathString();
 }
+
+TSharedRef<SWidget> SEditorConfigWidget::GenerateLanguageOption(TSharedPtr<FLanguageInfo> Item)
+{
+	return SNew(STextBlock)
+		.Text(FText::FromString(Item->T))
+		.Font(FAppStyle::Get().GetFontStyle("NormalFont"));
+}
+
 FReply SEditorConfigWidget::OnSaveClicked()
 {
 	Config.Save();
 	FMessageDialog::Open(EAppMsgType::Ok, FText::FromString("Configuration saved successfully!"));
 	return FReply::Handled();
 }
+void SEditorConfigWidget::OnLanguageCheckboxChanged(ECheckBoxState NewState)
+{
+	if (NewState == ECheckBoxState::Checked)
+	{
+		// Set all CommonLocales' IsSelected to true
+		for (const TSharedPtr<FLanguageInfo>& Lang : CommonLocales)
+		{
+			Lang->IsSelected = true;
+		}
+	}
+	else
+	{
+		// Set all CommonLocales' IsSelected to false
+		for (const TSharedPtr<FLanguageInfo>& Lang : CommonLocales)
+		{
+			Lang->IsSelected = false;
+		}
+	}
+}
+

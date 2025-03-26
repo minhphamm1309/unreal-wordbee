@@ -2,6 +2,7 @@
 #include "Tabs/SConnectTab.h"
 #include "Tabs/SAboutTabUI.h"
 #include "Tabs/SDocumentInfo.h"
+#include "Tabs/SEditorConfigWidget.h"
 #include "Widgets/Layout/SWidgetSwitcher.h"
 
 BEGIN_SLATE_FUNCTION_BUILD_OPTIMIZATION
@@ -17,7 +18,7 @@ void SWordBeeEditorConfigWindow::Construct(const FArguments& InArgs)
 
 	WidgetSwitcher->AddSlot()
 	[
-		SNew(STextBlock).Text(FText::FromString("Configuration Tab Content"))
+		SNew(SEditorConfigWidget)
 	];
 
 	WidgetSwitcher->AddSlot()

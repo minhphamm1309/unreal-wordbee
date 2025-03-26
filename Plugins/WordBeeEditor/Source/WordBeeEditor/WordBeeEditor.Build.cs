@@ -27,7 +27,8 @@ public class WordBeeEditor : ModuleRules
 				"AITestSuite", 
 				"EditorScriptingUtilities",
 				"AssetTools",
-				"KismetCompiler"
+				"PropertyEditor",
+				"KismetCompiler", "DesktopWidgets", 
 
 				// ... add private dependencies that you statically link with here ...	
 			}

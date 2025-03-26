@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "FWordbeeFile.h"
 #include "Http.h"
 #include "JsonObjectConverter.h"
 #include "WordbeeResponse.generated.h"
@@ -141,38 +142,6 @@ struct FCustomField
     FString Title;
 };
 
-USTRUCT(BlueprintType)
-struct FSegment
-{
-    GENERATED_BODY()
-
-    UPROPERTY(BlueprintReadWrite)
-    FString Key;
-
-    UPROPERTY(BlueprintReadWrite)
-    FString Component;
-
-    UPROPERTY(BlueprintReadWrite)
-    FString Format;
-
-    UPROPERTY(BlueprintReadWrite)
-    FDateTime Dt;
-
-    UPROPERTY(BlueprintReadWrite)
-    int32 Bsid;
-
-    UPROPERTY(BlueprintReadWrite)
-    TArray<FCustomField> CustomFields;
-
-    UPROPERTY(BlueprintReadWrite)
-    TMap<FString, FString> Texts;
-
-    UPROPERTY(BlueprintReadWrite)
-    TOptional<int32> ChMin;
-
-    UPROPERTY(BlueprintReadWrite)
-    TOptional<int32> ChMax;
-};
 
 USTRUCT(BlueprintType)
 struct FWordbeeDocument

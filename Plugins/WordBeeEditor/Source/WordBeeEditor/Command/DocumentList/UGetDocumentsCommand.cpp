@@ -8,7 +8,7 @@
 
 void UGetDocumentsCommand::ExecuteHttpRequest(UUserData* UserInfo, FOnHttpRequestComplete OnComplete)
 {
-	FString URL = UAPI::ConstructUrl(UserInfo->AccountId, UserInfo->Url, UAPI::ROUTER_DOCUMENTS);
+	FString URL = API::ConstructUrl(UserInfo->AccountId, UserInfo->Url, API::ROUTER_DOCUMENTS);
 
 	TSharedRef<IHttpRequest, ESPMode::ThreadSafe> HttpRequest = FHttpModule::Get().CreateRequest();
 

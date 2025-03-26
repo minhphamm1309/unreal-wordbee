@@ -6,10 +6,11 @@
 #include "WordBeeEditor/Command/DocumentList/UGetDocumentsCommand.h"
 #include "WordBeeEditor/Command/DocumentList/UGetDocumentsCommand.h"
 #include "WordBeeEditor/EditorWindow/SubWindow/SSelectorDocumentSubWindow.h"
+#include "WordBeeEditor/Utils/SingletonUtil.h"
 
 void SConnectTab::Construct(const FArguments& InArgs)
 {
-	UserInfo = SUserData::Get();
+	UserInfo = SingletonUtil::GetOrCreateAsset<UUserData>("/Game/WordBee/UserData.UserData");
 	SetConnectingState(false);
 	ChildSlot
 	[
@@ -182,8 +183,7 @@ FReply SConnectTab::OnConnectButtonClicked()
 	SaveSettings();
 	SetConnectingState(true);
 	// Call the API to authenticate
-	UAPI* API = NewObject<UAPI>();
-	API->Authenticate(SAccountId, SAPIKey, SUrl, FOnAuthCompleted::CreateSP(this, &SConnectTab::OnCompletedAuth));
+	API::Authenticate(SAccountId, SAPIKey, SUrl, FOnAuthCompleted::CreateSP(this, &SConnectTab::OnCompletedAuth));
 
 	return FReply::Handled();
 }
@@ -195,7 +195,7 @@ FReply SConnectTab::OnSelectDocumentClicked()
 	LinkPanel->SetVisibility(EVisibility::Collapsed);
 	auto subView = SNew(SSelectorDocumentSubWindow)
 		.OnSubWindowClosed(FOnSubWindowClosedDelegate::CreateSP(this, &SConnectTab::OnSubWindowClosed));
-	subView->Init(UserInfo ,DocumentsData);
+	subView->Init(UserInfo, DocumentsData);
 	SubWindow->SetContent(subView);
 	return FReply::Handled();
 }
@@ -258,9 +258,7 @@ bool SConnectTab::HasAuthenticatingCredentials() const
 
 void SConnectTab::SaveSettings()
 {
-	UserInfo = SUserData::Get();
 	FString ConfigSection = TEXT("ConnectSettings");
-
 	FString CustomIniPath = FPaths::ProjectSavedDir() + "WordBee/Settings.ini";
 	IFileManager::Get().MakeDirectory(*FPaths::GetPath(CustomIniPath), true);
 
@@ -322,8 +320,9 @@ void SConnectTab::LoadSettings() const
 
 void SConnectTab::LoadDocumentSettings()
 {
-	UGetDocumentsCommand::ExecuteHttpRequest( UserInfo,
-		 FOnHttpRequestComplete::CreateSP(this, &SConnectTab::OnFetchDocumentsResponseReceived));
+	UGetDocumentsCommand::ExecuteHttpRequest(UserInfo,
+	                                         FOnHttpRequestComplete::CreateSP(
+		                                         this, &SConnectTab::OnFetchDocumentsResponseReceived));
 }
 
 bool SConnectTab::HasDocumentsFetched() const

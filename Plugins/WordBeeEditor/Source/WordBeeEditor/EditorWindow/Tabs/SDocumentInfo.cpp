@@ -139,7 +139,7 @@ void SDocumentInfo::RefreshDocumentInfo()
 	// userInfo->AuthToken = "90d97e6c-c57e-45b3-bb6e-86158968d625";
 	// userInfo->Url = "eu.wordbee-translator.com";
 	UUserData* userInfo = SUserData::Get();
-	UAPI::FetchDocumentById(userInfo, userInfo->Did, [this](const FDocumentInfo& DocumentInfo)
+	API::FetchDocumentById(userInfo, userInfo->Did, [this](const FDocumentInfo& DocumentInfo)
 	{
 		// Directly update UI properties (since it's an editor plugin, no need for GameThread)
 		DocumentID = FString::FromInt(DocumentInfo.Id);

@@ -2,63 +2,83 @@
 
 #include "HttpModule.h"
 #include "JsonObjectConverter.h"
-#include "UPoolingCommand.h"
-#include "URequestExportDocumentCommand.h"
 #include "Interfaces/IHttpResponse.h"
 #include "WordBeeEditor/API/API.h"
+#include "WordBeeEditor/Models/FWordbeeFile.h"
 
 void ULinkDocumentCommand::Execute(UUserData* UserInfo,  const FString DocumentId, FOnLinkDocumentComplete callback)
 {
-	
-	URequestExportDocumentCommand::Execute(UserInfo ,DocumentId, FOnRequestExportDocumentComplete::CreateLambda(
-[=](bool success, const FString& response)
-       {
-			if (success)
-			{
-				UE_LOG(LogTemp, Warning, TEXT("ULinkDocumentCommand::Execute - %s"), *response);
-				FLinkDocumentResponseData ResponseData = ParseJsonResponse(response);
-				UPoolingCommand::Execute(UserInfo, ResponseData.Trm.RequestId
-					,FOnPoolingComplete::CreateLambda([=](bool bSuccess, const FString& Response)
-					{
-						callback.ExecuteIfBound(true);
-					})
-					, FOnPoolingFail::CreateLambda([=](const FString& Error)
-					{
-						callback.ExecuteIfBound(false);
-					})
-					);
-			}
-		    else
-			{
-				UE_LOG(LogTemp, Warning, TEXT("ULinkDocumentCommand::Execute - RequestExportDocumentCommand failed"));
-			}
-       }));
+	API::PullDocument(UserInfo, DocumentId, FOnPullDocumentComplete::CreateLambda([=](const FString& downloadContent)
+	{
+
+	    FWordbeeFile WordbeeFile;
+
+	    if (ParseJsonToWordbeeFile(downloadContent, WordbeeFile))
+	    {
+	        UE_LOG(LogTemp, Log, TEXT("Parsed Wordbee file successfully"));
+	    }
+	    else
+	    {
+		    UE_LOG(LogTemp, Log, TEXT("Parsed Wordbee file failed"));
+	    }
+	}));
+
 }
 
-FLinkDocumentResponseData ULinkDocumentCommand::ParseJsonResponse(const FString& Response)
+bool ULinkDocumentCommand::ParseJsonToWordbeeFile(const FString& JsonString, FWordbeeFile& OutWordbeeFile)
 {
-	FLinkDocumentResponseData ResponseData;
+    TSharedPtr<FJsonObject> JsonObject;
+    TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(JsonString);
 
-	// Tạo JSON reader để phân tích chuỗi JSON
-	TSharedRef<TJsonReader<>> JsonReader = TJsonReaderFactory<>::Create(Response);
+    if (FJsonSerializer::Deserialize(Reader, JsonObject) && JsonObject.IsValid())
+    {
+        // Deserialize basic fields
+        OutWordbeeFile.type = JsonObject->GetStringField("type");
+        OutWordbeeFile.version = JsonObject->GetStringField("version");
+        OutWordbeeFile.dsid = JsonObject->GetIntegerField("dsid");
+        OutWordbeeFile.did = JsonObject->GetIntegerField("did");
 
-	// Tạo đối tượng JsonObject để lưu trữ kết quả phân tích JSON
-	TSharedPtr<FJsonObject> JsonObject;
-	
-	// Chuyển đổi chuỗi JSON thành struct
-	if (FJsonObjectConverter::JsonObjectStringToUStruct<FLinkDocumentResponseData>(Response, &ResponseData, 0, 0))
-	
-	{
-		// Chuyển đổi thành công, bạn có thể truy cập các trường của ResponseData
-		UE_LOG(LogTemp, Log, TEXT("Request ID: %d"), ResponseData.Trm.RequestId);
-		UE_LOG(LogTemp, Log, TEXT("Is Batch: %s"), ResponseData.Trm.IsBatch ? TEXT("true") : TEXT("false"));
-		UE_LOG(LogTemp, Log, TEXT("Status: %s"), *ResponseData.Trm.Status);
-		UE_LOG(LogTemp, Log, TEXT("Status Text: %s"), *ResponseData.Trm.StatusText);
-	}
-	else
-	{
-		UE_LOG(LogTemp, Error, TEXT("Failed to convert JSON to struct"));
-	}
-	return ResponseData;
+        // Parse segments
+        const TArray<TSharedPtr<FJsonValue>>* SegmentsArray;
+        if (JsonObject->TryGetArrayField("segments", SegmentsArray))
+        {
+            for (const TSharedPtr<FJsonValue>& SegmentValue : *SegmentsArray)
+            {
+                TSharedPtr<FJsonObject> SegmentObject = SegmentValue->AsObject();
+                FSegment Segment;
+                Segment.key = SegmentObject->GetStringField("key");
+                Segment.component = SegmentObject->GetStringField("component");
+                Segment.dt = SegmentObject->GetStringField("dt");
+                Segment.format = SegmentObject->GetStringField("format");
+                Segment.bsid = SegmentObject->GetIntegerField("bsid");
+                Segment.chmin = SegmentObject->GetIntegerField("chmin");
+                Segment.chmax = SegmentObject->GetIntegerField("chmax");
+
+                // Parse texts
+                const TSharedPtr<FJsonObject>* TextsObject;
+                if (SegmentObject->TryGetObjectField("texts", TextsObject))
+                {
+                    for (const auto& TextPair : (*TextsObject)->Values)
+                    {
+                        TSharedPtr<FJsonObject> TextObject = TextPair.Value->AsObject();
+                        FSegmentText TextSegment;
+                        TextSegment.v = TextObject->GetStringField("v");
+                        TextSegment.st = TextObject->GetIntegerField("st");
+                        TextSegment.bk = TextObject->GetIntegerField("bk");
+                        TextSegment.ed = TextObject->GetIntegerField("ed");
+                        TextSegment.dt = TextObject->GetStringField("dt");
+
+                        Segment.texts.Add(TextPair.Key, TextSegment);
+                    }
+                }
+
+                OutWordbeeFile.segments.Add(Segment);
+            }
+        }
+
+        return true;
+    }
+
+    return false;
 }
 

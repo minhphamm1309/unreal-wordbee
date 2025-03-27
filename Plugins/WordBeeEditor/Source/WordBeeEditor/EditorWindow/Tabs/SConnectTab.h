@@ -1,7 +1,8 @@
 #pragma once
-#include "WordBeeEditor/Command/DocumentList/FDocumentData.h"
-#include "WordBeeEditor/Command/CreateDataAsset/UserData.h"
-#include "WordBeeEditor/Command/DocumentList/FDocumentData.h"
+#include "WordBeeEditor/Command/DocumentList/FDocumentDataResponse.h"
+#include "WordBeeEditor/Models/WordbeeUserData.h"
+#include "WordBeeEditor/Command/DocumentList/FDocumentDataResponse.h"
+#include "WordBeeEditor/Models/WordbeeResponse.h"
 
 
 class SConnectTab : public SCompoundWidget 
@@ -29,14 +30,17 @@ private:
 	TSharedPtr<SBorder> LinkPanel;
 	TSharedPtr<SBox> SubWindow;
 	TSharedPtr<STextBlock> ResponseTextBlock;
-	TArray<FDocumentData> DocumentsData;
+	TArray<FDocumentDataResponse> DocumentsData;
 	
-	UUserData* UserInfo;
+	FWordbeeUserData UserInfo;
 	bool bConnecting = false;
 	FText ButtonConnectStateText;
 	bool bIsAuthenticated = false;
 	bool bIsDocumentsFetched = false;
-	
+	bool bIsDocumentLinked = false;
+	bool bIsLinkReadyToClick{true};
+
+	FText GetLinkButtonText() const;
 	void SetConnectingState(bool bConnecting);
 	FText GetButtonText() const;
 	bool IsConnectButtonEnabled() const;
@@ -49,8 +53,9 @@ private:
 	bool HasDocumentsFetched() const;
 	void SetDocumentsFetched();
 	
-	void OnFetchDocumentsResponseReceived( const TArray<FDocumentData>&);
-	void OnSubWindowClosed(FString InDocumentId);
+	void OnFetchDocumentsResponseReceived(const TArray<FDocumentDataResponse>& response);
+	void OnSubWindowClosed(bool isLinked, FString InProjectId, FString InDocumentId);
+	void OnSubWindowClosed(bool isLinked, FString InProjectId, FString InDocumentId) const;
 };
 
 

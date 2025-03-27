@@ -2,10 +2,10 @@
 
 #include "CoreMinimal.h"
 #include "WordBeeEditor/Utils/ELanguage.h"
-#include "UserData.generated.h"
+#include "WordbeeUserData.generated.h"
 
-UCLASS(Blueprintable)
-class WORDBEEEDITOR_API UUserData : public UPrimaryDataAsset
+USTRUCT(Blueprintable)
+struct FWordbeeUserData //: public UPrimaryDataAsset
 {
 	GENERATED_BODY()
 public:

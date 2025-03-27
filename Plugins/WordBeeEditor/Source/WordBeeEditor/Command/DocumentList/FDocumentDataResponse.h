@@ -1,6 +1,6 @@
 #pragma once
 
-struct FDocumentData
+struct FDocumentDataResponse
 {
 	
 	FString Name;

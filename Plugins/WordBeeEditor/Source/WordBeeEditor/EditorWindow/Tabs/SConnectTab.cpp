@@ -2,14 +2,15 @@
 
 #include "WordBeeEditor/API/API.h"
 #include "WordBeeEditor/Command/CreateDataAsset/CreateConfigDataAssetCommand.h"
-#include "WordBeeEditor/Command/CreateDataAsset/SUserData.h"
 #include "WordBeeEditor/Command/DocumentList/UGetDocumentsCommand.h"
 #include "WordBeeEditor/Command/DocumentList/UGetDocumentsCommand.h"
+#include "WordBeeEditor/Command/LinkProject/ULinkDocumentCommand.h"
 #include "WordBeeEditor/EditorWindow/SubWindow/SSelectorDocumentSubWindow.h"
+#include "WordBeeEditor/Utils/SingletonUtil.h"
 
 void SConnectTab::Construct(const FArguments& InArgs)
 {
-	UserInfo = SUserData::Get();
+	UserInfo = SingletonUtil::GetFromIni<FWordbeeUserData>();
 	SetConnectingState(false);
 	ChildSlot
 	[
@@ -158,7 +159,8 @@ void SConnectTab::Construct(const FArguments& InArgs)
 					.Padding(5)
 					[
 						SNew(SButton)
-						             .Text(FText::FromString("Link")) // Bind the button text to the current state
+						             .Text(this, &SConnectTab::GetLinkButtonText)
+ // Bind the button text to the current state
 						             .IsEnabled(this, &SConnectTab::HasAuthenticatingCredentials)
  // Bind button enabled state
 						             .OnClicked(this, &SConnectTab::OnLinkDocumentClicked)
@@ -182,8 +184,7 @@ FReply SConnectTab::OnConnectButtonClicked()
 	SaveSettings();
 	SetConnectingState(true);
 	// Call the API to authenticate
-	UAPI* API = NewObject<UAPI>();
-	API->Authenticate(SAccountId, SAPIKey, SUrl, FOnAuthCompleted::CreateSP(this, &SConnectTab::OnCompletedAuth));
+	API::Authenticate(SAccountId, SAPIKey, SUrl, FOnAuthCompleted::CreateSP(this, &SConnectTab::OnCompletedAuth));
 
 	return FReply::Handled();
 }
@@ -195,21 +196,71 @@ FReply SConnectTab::OnSelectDocumentClicked()
 	LinkPanel->SetVisibility(EVisibility::Collapsed);
 	auto subView = SNew(SSelectorDocumentSubWindow)
 		.OnSubWindowClosed(FOnSubWindowClosedDelegate::CreateSP(this, &SConnectTab::OnSubWindowClosed));
-	subView->Init(UserInfo ,DocumentsData);
+	subView->Init(UserInfo, DocumentsData);
 	SubWindow->SetContent(subView);
 	return FReply::Handled();
 }
 
 FReply SConnectTab::OnLinkDocumentClicked()
 {
-	if (DocumentId.IsValid())
+	FString SDocumentId = DocumentId->GetText().ToString();
+
+	if (DocumentId.IsValid()) 
 	{
-		FString SDocumentId = DocumentId->GetText().ToString();
-		UserInfo->Did = SDocumentId; // Save Document ID to UserInfo
+		UserInfo.DocumentId = FCString::Atoi(*SDocumentId);
 	}
+	
+	if (!bIsDocumentLinked)
+	{
+		bIsLinkReadyToClick = false;
+		ULinkDocumentCommand::Execute(UserInfo, SDocumentId, FOnLinkDocumentComplete::CreateLambda(
+              [this , SDocumentId](bool bSuccess, const FWordbeeDocument& Document)
+              {
+              	  bIsLinkReadyToClick = true;
+                  if (bSuccess)
+                  {
+                      bIsDocumentLinked = true;
+                      FString documentName = DocumentsData.FindByPredicate(
+                          [&](const FDocumentDataResponse& Doc)
+                          {
+                              return Doc.Id == SDocumentId;
+                          })->Name;
+                  	
+                      FString ProjectId = DocumentsData.FindByPredicate(
+                          [&](const FDocumentDataResponse& Doc)
+                          {
+                              return Doc.Id == SDocumentId;
+                          })->Preference;
+                  	
+                      if (ProjectId.IsEmpty())
+                      {
+                          ProjectId = documentName;
+                      	UserInfo.ProjectId = ProjectId;
+                      }
+                  	
+                      ULinkDocumentCommand::SaveDocument(
+                          Document, SDocumentId, ProjectId, documentName);
+                  }
+                  else
+                  {
+                      bIsDocumentLinked = false;
+                  }
+              }));
+	}
+	else
+	{
+		ULinkDocumentCommand::SaveDocument(
+						  FWordbeeDocument(), "", "", "");
+	}
+	bIsDocumentLinked = !bIsDocumentLinked;
 	return FReply::Handled();
 }
 
+
+FText SConnectTab::GetLinkButtonText() const
+{
+	return bIsDocumentLinked ? FText::FromString("UnLink") : FText::FromString("Link");
+}
 
 void SConnectTab::SetConnectingState(bool bConnecting)
 {
@@ -245,7 +296,7 @@ void SConnectTab::OnCompletedAuth(FString ResponseString)
 		ResponseTextBlock->SetVisibility(EVisibility::Visible);
 		bIsAuthenticated = true;
 
-		UserInfo->AuthToken = ResponseString.TrimChar('"');
+		UserInfo.AuthToken = ResponseString.TrimChar('"');
 		SaveSettings();
 		LoadDocumentSettings();
 	}
@@ -253,77 +304,29 @@ void SConnectTab::OnCompletedAuth(FString ResponseString)
 
 bool SConnectTab::HasAuthenticatingCredentials() const
 {
-	return bIsAuthenticated;
+	return bIsAuthenticated && bIsLinkReadyToClick;
 }
 
 void SConnectTab::SaveSettings()
 {
-	UserInfo = SUserData::Get();
-	FString ConfigSection = TEXT("ConnectSettings");
-
-	FString CustomIniPath = FPaths::ProjectSavedDir() + "WordBee/Settings.ini";
-	IFileManager::Get().MakeDirectory(*FPaths::GetPath(CustomIniPath), true);
-
-	FConfigFile ConfigFile;
-
-	// UserInfo.AccountId = *AccountId->GetText().ToString();
-	// UserInfo.ApiKey = *APIKey->GetText().ToString();
-	// UserInfo.BaseUrl = *URL->GetText().ToString();
-	ConfigFile.SetString(*ConfigSection, TEXT("url"), *URL->GetText().ToString());
-	UserInfo->Url = *URL->GetText().ToString();
-
-	ConfigFile.SetString(*ConfigSection, TEXT("AccountId"), *AccountId->GetText().ToString());
-	UserInfo->AccountId = *AccountId->GetText().ToString();
-
-	ConfigFile.SetString(*ConfigSection, TEXT("ApiKey"), *APIKey->GetText().ToString());
-	UserInfo->ApiKey = *APIKey->GetText().ToString();
-
-	ConfigFile.SetString(*ConfigSection, TEXT("AuthToken"), *UserInfo->AuthToken);
-
-	// Write the config file to disk
-	ConfigFile.Write(CustomIniPath);
+	UserInfo.Url = *URL->GetText().ToString();
+	UserInfo.AccountId = *AccountId->GetText().ToString();
+	UserInfo.ApiKey = *APIKey->GetText().ToString();
+	SingletonUtil::SaveToIni<FWordbeeUserData>(UserInfo);
 }
 
 void SConnectTab::LoadSettings() const
 {
-	// Load the settings
-	FString ConfigSection = TEXT("ConnectSettings");
-	FString CustomIniPath = FPaths::ProjectSavedDir() + "WordBee/Settings.ini";
-
-	if (!FPaths::FileExists(CustomIniPath)) return;
-
-	// Create a new FConfigFile to read from the custom INI file
-	FConfigFile ConfigFile;
-
-	// Read the config file from disk
-	ConfigFile.Read(CustomIniPath);
-
-	FString SUrl;
-	if (ConfigFile.GetString(*ConfigSection, TEXT("url"), SUrl))
-	{
-		if (URL.IsValid())
-			URL->SetText(FText::FromString(SUrl));
-	}
-
-	FString SApiKey;
-	if (ConfigFile.GetString(*ConfigSection, TEXT("ApiKey"), SApiKey))
-	{
-		if (APIKey.IsValid())
-			APIKey->SetText(FText::FromString(SApiKey));
-	}
-
-	FString SAccountId;
-	if (ConfigFile.GetString(*ConfigSection, TEXT("AccountId"), SAccountId))
-	{
-		if (AccountId.IsValid())
-			AccountId->SetText(FText::FromString(SAccountId));
-	}
+	URL->SetText(FText::FromString(UserInfo.Url));
+	AccountId->SetText(FText::FromString(UserInfo.AccountId));
+	APIKey->SetText(FText::FromString(UserInfo.ApiKey));
 }
 
 void SConnectTab::LoadDocumentSettings()
 {
-	UGetDocumentsCommand::ExecuteHttpRequest( UserInfo,
-		 FOnHttpRequestComplete::CreateSP(this, &SConnectTab::OnFetchDocumentsResponseReceived));
+	UGetDocumentsCommand::ExecuteHttpRequest(UserInfo,
+	                                         FOnHttpRequestComplete::CreateSP(
+		                                         this, &SConnectTab::OnFetchDocumentsResponseReceived));
 }
 
 bool SConnectTab::HasDocumentsFetched() const
@@ -336,7 +339,7 @@ void SConnectTab::SetDocumentsFetched()
 	bIsDocumentsFetched = true;
 }
 
-void SConnectTab::OnFetchDocumentsResponseReceived(const TArray<FDocumentData>& response)
+void SConnectTab::OnFetchDocumentsResponseReceived(const TArray<FDocumentDataResponse>& response)
 {
 	if (response.Num() != 0)
 	{
@@ -350,11 +353,16 @@ void SConnectTab::OnFetchDocumentsResponseReceived(const TArray<FDocumentData>& 
 }
 
 
-void SConnectTab::OnSubWindowClosed(FString InDocumentId)
+void SConnectTab::OnSubWindowClosed(bool isLinked, FString InProjectId, FString InDocumentId)
 {
 	if (!InDocumentId.IsEmpty())
 		DocumentId->SetText(FText::FromString(InDocumentId));
 	ConnectionPanel->SetVisibility(EVisibility::Visible);
 	SubWindow->SetVisibility(EVisibility::Collapsed);
 	LinkPanel->SetVisibility(EVisibility::Visible);
+	bIsDocumentLinked = isLinked;
+
+	UserInfo.ProjectId = InProjectId;
+	UserInfo.DocumentId = FCString::Atoi(*InDocumentId);
+	SaveSettings();
 }

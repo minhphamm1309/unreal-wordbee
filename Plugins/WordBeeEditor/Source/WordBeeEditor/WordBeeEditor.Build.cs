@@ -25,11 +25,10 @@ public class WordBeeEditor : ModuleRules
 				"EditorScriptingUtilities",
 				"JsonUtilities",
 				"AITestSuite", 
-				"EditorScriptingUtilities",
 				"AssetTools",
 				"PropertyEditor",
-				"KismetCompiler", "DesktopWidgets", 
-
+				"KismetCompiler", 
+				"DesktopWidgets", 
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);

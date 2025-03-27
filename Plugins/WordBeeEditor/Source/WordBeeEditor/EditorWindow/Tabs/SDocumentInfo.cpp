@@ -6,7 +6,7 @@
 #include "Widgets/Layout/SUniformGridPanel.h"
 #include "Widgets/Input/SButton.h"
 #include "WordBeeEditor/API/API.h"
-#include "WordBeeEditor/Command/CreateDataAsset/SUserData.h"
+#include "WordBeeEditor/Utils/SingletonUtil.h"
 
 void SDocumentInfo::Construct(const FArguments& InArgs)
 {
@@ -133,13 +133,13 @@ void SDocumentInfo::Construct(const FArguments& InArgs)
 
 void SDocumentInfo::RefreshDocumentInfo()
 {
-	// UUserData* userInfo = NewObject<UUserData>(); // Create UObject instance
-	// userInfo->AccountId = "gcc-tpt";
-	// userInfo->ApiKey = "80e7bdc7-e521-4739-ba1d-2b53dc34b837";
-	// userInfo->AuthToken = "90d97e6c-c57e-45b3-bb6e-86158968d625";
-	// userInfo->Url = "eu.wordbee-translator.com";
-	UUserData* userInfo = SUserData::Get();
-	UAPI::FetchDocumentById(userInfo, userInfo->Did, [this](const FDocumentInfo& DocumentInfo)
+	// FWordbeeUserData userInfo = NewObject<UUserData>(); // Create UObject instance
+	// userInfo.AccountId = "gcc-tpt";
+	// userInfo.ApiKey = "80e7bdc7-e521-4739-ba1d-2b53dc34b837";
+	// userInfo.AuthToken = "90d97e6c-c57e-45b3-bb6e-86158968d625";
+	// userInfo.Url = "eu.wordbee-translator.com";
+	FWordbeeUserData userInfo = SingletonUtil::GetFromIni<FWordbeeUserData>();
+	API::FetchDocumentById(userInfo, FString::FromInt(userInfo.DocumentId), [this](const FDocumentInfo& DocumentInfo)
 	{
 		// Directly update UI properties (since it's an editor plugin, no need for GameThread)
 		DocumentID = FString::FromInt(DocumentInfo.Id);

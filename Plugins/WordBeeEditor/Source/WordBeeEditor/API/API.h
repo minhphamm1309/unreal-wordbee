@@ -3,17 +3,14 @@
 #include "CoreMinimal.h"
 #include "Interfaces/IHttpRequest.h"
 #include "UObject/NoExportTypes.h"
-#include "WordBeeEditor/Command/CreateDataAsset/UserData.h"
+#include "WordBeeEditor/Models/WordbeeUserData.h"
 #include "WordBeeEditor/Models/WordbeeResponse.h"
 #include "WordbeeEditor/Models/FDocumentInfo.h"
-#include "API.generated.h"
 
 DECLARE_DELEGATE_OneParam(FOnAuthCompleted, FString);
-
-UCLASS()
-class UAPI : public UObject
+DECLARE_DELEGATE_OneParam(FOnPullDocumentComplete, FString);
+class API
 {
-	GENERATED_BODY()
 public :
 	static const FString ROUTER_AUTH ;
 	static const FString ROUTER_DOCUMENTS ;
@@ -24,13 +21,13 @@ public :
 	static const FString ROUTER_DOCUMENT_POOLING ;
 	static const FString ROUTER_PROJECT_LOCALES;
 public:
-	void Authenticate(FString AccountId, FString ApiKey, FString BaseUrl, FOnAuthCompleted callback);
+	static  void Authenticate(FString AccountId, FString ApiKey, FString BaseUrl, FOnAuthCompleted callback);
 	static FString ConstructUrl(FString AccountId, FString BaseUrl, FString Router);
-	static void FetchDocumentById(UUserData* userInfo, const FString& DocumentId, TFunction<void(const FDocumentInfo&)> Callback);
-	static void PullDocument(UUserData* userInfo, const FString& DocumentId);
-	static void CheckStatus(UUserData* userInfo, int32 RequestId, int32 RetryCount = 0);
-	static void DownloadFile(UUserData* userInfo, const FString& FileToken);
-	static void FetchLanguages(UUserData* userInfo, TFunction<void(const TArray<FLanguageInfo>&)> OnSuccess);
+	static void FetchDocumentById(FWordbeeUserData userInfo, const FString& DocumentId, TFunction<void(const FDocumentInfo&)> Callback);
+	static void PullDocument(FWordbeeUserData userInfo, const FString& DocumentId , FOnPullDocumentComplete callback);
+	static  void CheckStatus(FWordbeeUserData userInfo, int32 RequestId, int32 RetryCount = 0, FOnPullDocumentComplete callback = nullptr);
+	static void DownloadFile(FWordbeeUserData userInfo, const FString& FileToken, FOnPullDocumentComplete callback = nullptr);
+	static void FetchLanguages(FWordbeeUserData userInfo, TFunction<void(const TArray<FLanguageInfo>&)> OnSuccess);
 private:
 	FOnAuthCompleted OnAuthCompleted;
 	void OnAuthResponseReceived(FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful);

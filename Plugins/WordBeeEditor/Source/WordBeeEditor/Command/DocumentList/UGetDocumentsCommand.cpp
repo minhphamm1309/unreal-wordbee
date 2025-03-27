@@ -1,14 +1,14 @@
 #include "UGetDocumentsCommand.h"
 
-#include "FDocumentData.h"
+#include "FDocumentDataResponse.h"
 #include "HttpModule.h"
 #include "Interfaces/IHttpResponse.h"
 #include "WordBeeEditor/API/API.h"
 
 
-void UGetDocumentsCommand::ExecuteHttpRequest(UUserData* UserInfo, FOnHttpRequestComplete OnComplete)
+void UGetDocumentsCommand::ExecuteHttpRequest(FWordbeeUserData userInfo, FOnHttpRequestComplete OnComplete)
 {
-	FString URL = UAPI::ConstructUrl(UserInfo->AccountId, UserInfo->Url, UAPI::ROUTER_DOCUMENTS);
+	FString URL = API::ConstructUrl(userInfo.AccountId, userInfo.Url, API::ROUTER_DOCUMENTS);
 
 	TSharedRef<IHttpRequest, ESPMode::ThreadSafe> HttpRequest = FHttpModule::Get().CreateRequest();
 
@@ -16,8 +16,8 @@ void UGetDocumentsCommand::ExecuteHttpRequest(UUserData* UserInfo, FOnHttpReques
 	HttpRequest->SetURL(URL);
 	HttpRequest->SetVerb("POST");
 	HttpRequest->SetHeader(TEXT("Content-Type"), TEXT("application/x-www-form-urlencoded"));
-	HttpRequest->SetHeader(TEXT("X-Auth-Token"), UserInfo->AuthToken);
-	HttpRequest->SetHeader(TEXT("X-Auth-AccountId"), UserInfo->AccountId);
+	HttpRequest->SetHeader(TEXT("X-Auth-Token"), userInfo.AuthToken);
+	HttpRequest->SetHeader(TEXT("X-Auth-AccountId"), userInfo.AccountId);
 
 
 	// Bind the response handler
@@ -31,7 +31,7 @@ void UGetDocumentsCommand::ExecuteHttpRequest(UUserData* UserInfo, FOnHttpReques
 
 				if (FJsonSerializer::Deserialize(Reader, JsonObject) && JsonObject.IsValid())
 				{
-					TArray<FDocumentData> DocumentDataArray;
+					TArray<FDocumentDataResponse> DocumentDataArray;
 					// Extract the array "rows"
 					const TArray<TSharedPtr<FJsonValue>> Rows = JsonObject->GetArrayField("rows");
 
@@ -41,7 +41,7 @@ void UGetDocumentsCommand::ExecuteHttpRequest(UUserData* UserInfo, FOnHttpReques
 						TSharedPtr<FJsonObject> RowObject = RowValue->AsObject();
 
 						// Create a new instance of FDocumentData to store this row's data
-						FDocumentData DocumentData;
+						FDocumentDataResponse DocumentData;
 
 						// Extract and assign values to the DocumentData struct
 						DocumentData.Id = RowObject->GetStringField("id");
@@ -75,14 +75,14 @@ void UGetDocumentsCommand::ExecuteHttpRequest(UUserData* UserInfo, FOnHttpReques
 				else
 				{
 					// Failed to parse JSON
-					OnComplete.ExecuteIfBound(TArray<FDocumentData>());
+					OnComplete.ExecuteIfBound(TArray<FDocumentDataResponse>());
 				}
 			}
 			else
 			{
 				if (OnComplete.IsBound())
 				{
-					OnComplete.Execute(TArray<FDocumentData>());
+					OnComplete.Execute(TArray<FDocumentDataResponse>());
 				}
 			}
 		});

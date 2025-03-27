@@ -9,6 +9,7 @@
 #include "LocalizationTargetTypes.h"
 #include "LocalizationSettings.h"
 #include "WordBeeEditor/Command/CreateDataAsset/SUserData.h"
+#include "WordBeeEditor/Utils/SingletonUtil.h"
 
 struct FLocalizationTargetSettings;
 class ULocalizationTarget;
@@ -19,8 +20,8 @@ void SEditorConfigWidget::Construct(const FArguments& InArgs)
 	Config.Load();
 	MissingLocales.Empty(); // Clear previous items
 	CommonLocales.Empty();
-	UUserData* userInfo = SUserData::Get();
-	UAPI::FetchLanguages(userInfo, [this](const TArray<FLanguageInfo>& Languages)
+	FWordbeeUserData userInfo = SingletonUtil::GetFromIni<FWordbeeUserData>();
+	API::FetchLanguages(userInfo, [this](const TArray<FLanguageInfo>& Languages)
 	{
 		UE_LOG(LogTemp, Log, TEXT("Language fetch success"));
 		UE_LOG(LogTemp, Log, TEXT("Wordbee Locales (Total: %d):"), Languages.Num());

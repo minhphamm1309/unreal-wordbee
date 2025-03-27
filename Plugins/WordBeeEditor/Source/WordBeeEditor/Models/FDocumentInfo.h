@@ -1,22 +1,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "FLanguageInfo.h"
 #include "FDocumentInfo.generated.h"
 
-USTRUCT(BlueprintType)
-struct FLanguageInfo
-{
-	GENERATED_BODY()
-
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Language Info")
-	FString V;
-
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Language Info")
-	FString T;
-
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Language Info")
-	FString Src;
-};
 
 USTRUCT(BlueprintType)
 struct FDocumentInfo

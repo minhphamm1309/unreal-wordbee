@@ -2,6 +2,10 @@
 
 #include "CoreMinimal.h"
 #include "EditorAssetLibrary.h"
+#include "JsonObjectConverter.h"
+#include "Reflection/FunctionUtilsPrivate.h"
+#include "UObject/NoExportTypes.h"
+#include "UObject/UnrealType.h"
 
 class SingletonUtil
 {
@@ -27,5 +31,64 @@ public:
         }
 
         return Asset;
+    }
+
+    template <typename T>
+    static T GetFromIni()
+    {
+        static_assert(UE::Private::TIsUHTUStruct<T>::value, "The template parameter must be a USTRUCT, not a UCLASS!");
+        FString key;
+        if (T::StaticStruct())
+        {
+            key = T::StaticStruct()->GetName();
+        }
+
+        FString ConfigSection = TEXT("ConnectSettings");
+        FString CustomIniPath = FPaths::ProjectSavedDir() + "WordBee/Settings.ini";
+
+        if (!FPaths::FileExists(CustomIniPath)) return T();
+
+        // Create a new FConfigFile to read from the custom INI file
+        FConfigFile ConfigFile;
+
+        // Read the config file from disk
+        ConfigFile.Read(CustomIniPath);
+
+        FString StrJsonObject;
+        if (ConfigFile.GetString(*ConfigSection, *key, StrJsonObject))
+        {
+            T OutObject;
+            FJsonObjectConverter::JsonObjectStringToUStruct(StrJsonObject, &OutObject, 0, 0);
+            return OutObject;
+        }
+
+        return T();
+    }
+
+    template <typename T>
+    static void SaveToIni(const T& Object)
+    {
+        FString key;
+        if (T::StaticStruct())
+        {
+            key = T::StaticStruct()->GetName();
+        }
+
+        FString ConfigSection = TEXT("ConnectSettings");
+        FString CustomIniPath = FPaths::ProjectSavedDir() + "WordBee/Settings.ini";
+
+        if (!FPaths::FileExists(CustomIniPath)) return;
+
+        // Create a new FConfigFile to read from the custom INI file
+        FConfigFile ConfigFile;
+
+        // Read the config file from disk
+        ConfigFile.Read(CustomIniPath);
+
+        FString StrJsonObject;
+        FJsonObjectConverter::UStructToJsonObjectString(Object, StrJsonObject, 0, 0, 0, nullptr, true);
+
+        ConfigFile.SetString(*ConfigSection, *key, *StrJsonObject);
+        ConfigFile.Write(CustomIniPath);
     }
 };

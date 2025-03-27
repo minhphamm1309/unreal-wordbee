@@ -109,24 +109,24 @@ void API::OnAuthResponseReceived(FHttpRequestPtr Request, FHttpResponsePtr Respo
 	}
 }
 
-void API::FetchDocumentById(UUserData* userInfo, const FString& DocumentId,
+void API::FetchDocumentById(FWordbeeUserData userInfo, const FString& DocumentId,
                             TFunction<void(const FDocumentInfo&)> Callback)
 {
-	if (userInfo->AccountId.IsEmpty() || userInfo->AuthToken.IsEmpty())
+	if (userInfo.AccountId.IsEmpty() || userInfo.AuthToken.IsEmpty())
 	{
 		UE_LOG(LogTemp, Error, TEXT("Invalid user data. Cannot fetch document."));
 		return;
 	}
 
-	FString Url = ConstructUrl(userInfo->AccountId, userInfo->Url, ROUTER_DOCUMENT + DocumentId);
+	FString Url = ConstructUrl(userInfo.AccountId, userInfo.Url, ROUTER_DOCUMENT + DocumentId);
 	UE_LOG(LogTemp, Log, TEXT("Fetching document info from %s"), *Url);
 
 	TSharedRef<IHttpRequest, ESPMode::ThreadSafe> Request = FHttpModule::Get().CreateRequest();
 	Request->SetURL(Url);
 	Request->SetVerb(TEXT("GET"));
 	Request->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
-	Request->SetHeader(APIConstant::AuthToken, userInfo->AuthToken);
-	Request->SetHeader(APIConstant::AuthAccountID, userInfo->AccountId);
+	Request->SetHeader(APIConstant::AuthToken, userInfo.AuthToken);
+	Request->SetHeader(APIConstant::AuthAccountID, userInfo.AccountId);
 
 	Request->OnProcessRequestComplete().BindLambda(
 		[Callback](FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful)
@@ -152,17 +152,17 @@ void API::FetchDocumentById(UUserData* userInfo, const FString& DocumentId,
 	Request->ProcessRequest();
 }
 
-void API::PullDocument(UUserData* userInfo, const FString& DocumentId, FOnPullDocumentComplete callback)
+void API::PullDocument(FWordbeeUserData userInfo, const FString& DocumentId, FOnPullDocumentComplete callback)
 {
 	TSharedRef<IHttpRequest, ESPMode::ThreadSafe> Request = FHttpModule::Get().CreateRequest();
-	FString url = ConstructUrl(userInfo->AccountId, userInfo->Url,
+	FString url = ConstructUrl(userInfo.AccountId, userInfo.Url,
 	                           FString::Format(*ROUTER_DOCUMENT_PULL, {DocumentId}));
 	Request->SetURL(url);
 	Request->SetVerb(TEXT("POST"));
 
 	Request->SetHeader(TEXT("Content-Type"), TEXT("application/x-www-form-urlencoded"));
-	Request->SetHeader(TEXT("X-Auth-AccountId"), userInfo->AccountId);
-	Request->SetHeader(TEXT("X-Auth-Token"), userInfo->AuthToken);
+	Request->SetHeader(TEXT("X-Auth-AccountId"), userInfo.AccountId);
+	Request->SetHeader(TEXT("X-Auth-Token"), userInfo.AuthToken);
 
 	Request->SetContentAsString(
 		TEXT("{ \"includeComments\": true, \"includeCustomFields\": true, \"copySourceToTarget\": false }"));
@@ -183,7 +183,7 @@ void API::PullDocument(UUserData* userInfo, const FString& DocumentId, FOnPullDo
 	Request->ProcessRequest();
 }
 
-void API::CheckStatus(UUserData* userInfo, int32 RequestId, int32 RetryCount, FOnPullDocumentComplete callback)
+void API::CheckStatus(FWordbeeUserData userInfo, int32 RequestId, int32 RetryCount, FOnPullDocumentComplete callback)
 {
 	const int32 MaxRetries = 15; // Stop checking after 15 retries (~30 seconds)
 	if (RequestId == 0 || RetryCount >= MaxRetries)
@@ -193,12 +193,12 @@ void API::CheckStatus(UUserData* userInfo, int32 RequestId, int32 RetryCount, FO
 		return;
 	}
 	TSharedRef<IHttpRequest, ESPMode::ThreadSafe> Request = FHttpModule::Get().CreateRequest();
-	FString url = ConstructUrl(userInfo->AccountId, userInfo->Url, FString::Format(*ROUTER_POLL, {RequestId}));
+	FString url = ConstructUrl(userInfo.AccountId, userInfo.Url, FString::Format(*ROUTER_POLL, {RequestId}));
 	Request->SetURL(url);
 	Request->SetVerb(TEXT("GET"));
 
-	Request->SetHeader(TEXT("X-Auth-AccountId"), userInfo->AccountId);
-	Request->SetHeader(TEXT("X-Auth-Token"), userInfo->AuthToken);
+	Request->SetHeader(TEXT("X-Auth-AccountId"), userInfo.AccountId);
+	Request->SetHeader(TEXT("X-Auth-Token"), userInfo.AuthToken);
 	Request->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
 
 	Request->OnProcessRequestComplete().BindLambda([=](FHttpRequestPtr Req, FHttpResponsePtr Res, bool bSuccess)
@@ -231,16 +231,16 @@ void API::CheckStatus(UUserData* userInfo, int32 RequestId, int32 RetryCount, FO
 	Request->ProcessRequest();
 }
 
-void API::DownloadFile(UUserData* userInfo, const FString& FileToken, FOnPullDocumentComplete callback)
+void API::DownloadFile(FWordbeeUserData userInfo, const FString& FileToken, FOnPullDocumentComplete callback)
 {
 	TSharedRef<IHttpRequest, ESPMode::ThreadSafe> Request = FHttpModule::Get().CreateRequest();
-	FString url = ConstructUrl(userInfo->AccountId, userInfo->Url,
+	FString url = ConstructUrl(userInfo.AccountId, userInfo.Url,
 	                           FString::Format(*ROUTER_DownloadDocument, {FileToken}));
 	Request->SetURL(url);
 	Request->SetVerb(TEXT("GET"));
 
-	Request->SetHeader(TEXT("X-Auth-AccountId"), userInfo->AccountId);
-	Request->SetHeader(TEXT("X-Auth-Token"), userInfo->AuthToken);
+	Request->SetHeader(TEXT("X-Auth-AccountId"), userInfo.AccountId);
+	Request->SetHeader(TEXT("X-Auth-Token"), userInfo.AuthToken);
 	Request->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
 
 	Request->OnProcessRequestComplete().BindLambda([=](FHttpRequestPtr Req, FHttpResponsePtr Res, bool bSuccess)

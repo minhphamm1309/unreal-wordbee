@@ -1,8 +1,7 @@
 #include "SSelectorDocumentSubWindow.h"
 
-#include "IOS/IOSAsyncTask.h"
 #include "WordBeeEditor/Command/LinkProject/ULinkDocumentCommand.h"
-#include "WordBeeEditor/Command/CreateDataAsset/UserData.h"
+#include "WordBeeEditor/Models/WordbeeResponse.h"
 
 
 BEGIN_SLATE_FUNCTION_BUILD_OPTIMIZATION
@@ -10,7 +9,7 @@ BEGIN_SLATE_FUNCTION_BUILD_OPTIMIZATION
 void SSelectorDocumentSubWindow::Construct(const FArguments& InArgs)
 {
 	OnSubWindowClosed = InArgs._OnSubWindowClosed;
-
+	ButtonLinkStateText = FText::FromString("Link");
 	ChildSlot
 	[
 		// title
@@ -83,7 +82,7 @@ void SSelectorDocumentSubWindow::Construct(const FArguments& InArgs)
 
 				+ SVerticalBox::Slot()
 				[
-					SAssignNew(DocumentListView, SListView<TSharedPtr<FDocumentData>>)
+					SAssignNew(DocumentListView, SListView<TSharedPtr<FDocumentDataResponse>>)
 					.ListItemsSource(&FilteredDocuments)
 					.OnGenerateRow(this, &SSelectorDocumentSubWindow::GenerateDocumentRow)
 					.OnSelectionChanged(this, &SSelectorDocumentSubWindow::OnDocumentSelected)
@@ -99,29 +98,35 @@ void SSelectorDocumentSubWindow::Construct(const FArguments& InArgs)
 			SNew(SHorizontalBox)
 			+ SHorizontalBox::Slot()
 			.HAlign(HAlign_Left)
-			
+
 			+ SHorizontalBox::Slot()
 			.HAlign(HAlign_Right)
 			[
 				SNew(SButton)
-				.Text(FText::FromString("Link"))
-				.OnClicked(this, &SSelectorDocumentSubWindow::CloseWindow)
+				.IsEnabled(this, &SSelectorDocumentSubWindow::GetReadyLinkButtonState)
+				.Text(this, &SSelectorDocumentSubWindow::GetButtonLinkStateText)
+				.OnClicked(this, &SSelectorDocumentSubWindow::LinkAndCloseWindow)
 			]
 		]
 	];
 }
 
-void SSelectorDocumentSubWindow::OnDocumentSelected(TSharedPtr<FDocumentData> SelectedItem,
+void SSelectorDocumentSubWindow::OnDocumentSelected(TSharedPtr<FDocumentDataResponse> SelectedItem,
                                                     ESelectInfo::Type SelectInfo)
 {
 	DocumentId = SelectedItem->Id;
 }
 
-void SSelectorDocumentSubWindow::Init(UUserData* InUserData,const TArray<FDocumentData>& InDocumentData)
+FText SSelectorDocumentSubWindow::GetButtonLinkStateText() const
+{
+	return ButtonLinkStateText;
+}
+
+void SSelectorDocumentSubWindow::Init(FWordbeeUserData InUserData, const TArray<FDocumentDataResponse>& InDocumentData)
 {
 	DocumentDataArray = InDocumentData;
 	UserData = InUserData;
-	for (const FDocumentData& Doc : DocumentDataArray)
+	for (const FDocumentDataResponse& Doc : DocumentDataArray)
 	{
 		TSharedPtr<FString> Preference = MakeShared<FString>(Doc.Preference);
 		if (!Preferences.ContainsByPredicate([&](const TSharedPtr<FString>& ExistingPref)
@@ -139,32 +144,62 @@ void SSelectorDocumentSubWindow::Init(UUserData* InUserData,const TArray<FDocume
 	}
 }
 
-FReply SSelectorDocumentSubWindow::CloseWindow() const
+FReply SSelectorDocumentSubWindow::LinkAndCloseWindow()
 {
 	if (OnSubWindowClosed.IsBound())
 	{
 		if (!DocumentId.IsEmpty())
 		{
-			
-			ULinkDocumentCommand::Execute( UserData,DocumentId, FOnLinkDocumentComplete::CreateLambda([this](bool bSuccess)
-			{
-				OnSubWindowClosed.Execute(DocumentId);
-			}));
+			bIsReadyToLink = false;
+			ButtonLinkStateText = FText::FromString("Linking...");
+			ULinkDocumentCommand::Execute(UserData, DocumentId, FOnLinkDocumentComplete::CreateLambda(
+                  [this](bool bSuccess, const FWordbeeDocument& Document)
+                  {
+                      if (bSuccess)
+                      {
+                          ButtonLinkStateText = FText::FromString("UnLink");
+                          FString documentName = DocumentDataArray.FindByPredicate(
+                              [&](const FDocumentDataResponse& Doc)
+                              {
+	                              return Doc.Id == DocumentId;
+                              })->Name;
+                          ULinkDocumentCommand::SaveDocument(
+                              Document, DocumentId, ProjectId, documentName);
+                          OnSubWindowClosed.Execute(true, ProjectId, DocumentId);
+                      }
+                      else
+                      {
+                          bIsReadyToLink = true;
+                          ButtonLinkStateText = FText::FromString("Link Failed");
+                      }
+                  }));
 		}
 		else
 		{
-			OnSubWindowClosed.Execute(DocumentId);
+			bIsReadyToLink = true;
+			OnSubWindowClosed.Execute(false, ProjectId, DocumentId);
 		}
 	}
 	return FReply::Handled();
+}
+
+FReply SSelectorDocumentSubWindow::CloseWindow() const
+{
+	OnSubWindowClosed.Execute(false, ProjectId, DocumentId);
+	return FReply::Handled();
+}
+
+bool SSelectorDocumentSubWindow::GetReadyLinkButtonState() const
+{
+	return bIsReadyToLink;
 }
 
 void SSelectorDocumentSubWindow::OnProjectSelected(TSharedPtr<FString> SelectedItem, ESelectInfo::Type SelectInfo)
 {
 	if (SelectedItem.IsValid())
 	{
-		FString SelectedPreference = *SelectedItem;
-		UpdateFilteredDocuments(SelectedPreference);
+		ProjectId = *SelectedItem;
+		UpdateFilteredDocuments(ProjectId);
 		if (DocumentListView.IsValid())
 		{
 			DocumentListView->RequestListRefresh();
@@ -181,7 +216,7 @@ TSharedRef<ITableRow> SSelectorDocumentSubWindow::GenerateProjectRow(TSharedPtr<
 		];
 }
 
-TSharedRef<ITableRow> SSelectorDocumentSubWindow::GenerateDocumentRow(TSharedPtr<FDocumentData> InItem,
+TSharedRef<ITableRow> SSelectorDocumentSubWindow::GenerateDocumentRow(TSharedPtr<FDocumentDataResponse> InItem,
                                                                       const TSharedRef<STableViewBase>& OwnerTable)
 {
 	return SNew(STableRow<TSharedPtr<FDocumentData>>, OwnerTable)
@@ -194,11 +229,11 @@ void SSelectorDocumentSubWindow::UpdateFilteredDocuments(const FString& Selected
 {
 	FilteredDocuments.Empty();
 
-	for (const FDocumentData& Doc : DocumentDataArray)
+	for (const FDocumentDataResponse& Doc : DocumentDataArray)
 	{
 		if (Doc.Preference == SelectedPreference)
 		{
-			FilteredDocuments.Add(MakeShared<FDocumentData>(Doc));
+			FilteredDocuments.Add(MakeShared<FDocumentDataResponse>(Doc));
 		}
 	}
 }

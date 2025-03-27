@@ -1,27 +1,29 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "FSegment.h"
-#include "FWordbeeFile.generated.h"
+#include "FCustomField.h"
+#include "FSegmentText.generated.h"
 
 USTRUCT(BlueprintType)
-struct FWordbeeFile
+struct FSegmentText
 {
 	GENERATED_BODY()
 
 	UPROPERTY(BlueprintReadWrite)
-	FString type;
+	FString v;
 
 	UPROPERTY(BlueprintReadWrite)
-	FString version;
+	int32 st;
 
 	UPROPERTY(BlueprintReadWrite)
-	int32 dsid;
+	int32 bk;
 
 	UPROPERTY(BlueprintReadWrite)
-	int32 did;
+	int32 ed;
 
 	UPROPERTY(BlueprintReadWrite)
-	TArray<FSegment> segments;
+	FString dt;
+
+	UPROPERTY(BlueprintReadWrite)
+	TArray<FCustomField> cfs;
 };
-

@@ -6,6 +6,7 @@
 #include "JsonObjectConverter.h"
 #include "WordbeeResponse.generated.h"
 
+struct FCustomField;
 // ====================================
 // ResponseData
 // ====================================
@@ -125,21 +126,6 @@ struct FResult
 
     UPROPERTY(BlueprintReadWrite)
     TArray<FString> Items;
-};
-
-// ====================================
-// Document
-// ====================================
-USTRUCT(BlueprintType)
-struct FCustomField
-{
-    GENERATED_BODY()
-
-    UPROPERTY(BlueprintReadWrite)
-    FString Id;
-
-    UPROPERTY(BlueprintReadWrite)
-    FString Title;
 };
 
 

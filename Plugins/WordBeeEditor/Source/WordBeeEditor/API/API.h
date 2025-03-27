@@ -3,7 +3,7 @@
 #include "CoreMinimal.h"
 #include "Interfaces/IHttpRequest.h"
 #include "UObject/NoExportTypes.h"
-#include "WordBeeEditor/Command/CreateDataAsset/UserData.h"
+#include "WordBeeEditor/Models/WordbeeUserData.h"
 #include "WordBeeEditor/Models/WordbeeResponse.h"
 #include "WordbeeEditor/Models/FDocumentInfo.h"
 
@@ -23,10 +23,10 @@ public :
 public:
 	static  void Authenticate(FString AccountId, FString ApiKey, FString BaseUrl, FOnAuthCompleted callback);
 	static FString ConstructUrl(FString AccountId, FString BaseUrl, FString Router);
-	static void FetchDocumentById(UUserData* userInfo, const FString& DocumentId, TFunction<void(const FDocumentInfo&)> Callback);
-	static void PullDocument(UUserData* userInfo, const FString& DocumentId , FOnPullDocumentComplete callback);
-	static  void CheckStatus(UUserData* userInfo, int32 RequestId, int32 RetryCount = 0, FOnPullDocumentComplete callback = nullptr);
-	static void DownloadFile(UUserData* userInfo, const FString& FileToken, FOnPullDocumentComplete callback = nullptr);
+	static void FetchDocumentById(FWordbeeUserData userInfo, const FString& DocumentId, TFunction<void(const FDocumentInfo&)> Callback);
+	static void PullDocument(FWordbeeUserData userInfo, const FString& DocumentId , FOnPullDocumentComplete callback);
+	static  void CheckStatus(FWordbeeUserData userInfo, int32 RequestId, int32 RetryCount = 0, FOnPullDocumentComplete callback = nullptr);
+	static void DownloadFile(FWordbeeUserData userInfo, const FString& FileToken, FOnPullDocumentComplete callback = nullptr);
 private:
 	FOnAuthCompleted OnAuthCompleted;
 	void OnAuthResponseReceived(FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful);

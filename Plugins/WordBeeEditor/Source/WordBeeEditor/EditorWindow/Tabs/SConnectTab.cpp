@@ -311,7 +311,6 @@ void SConnectTab::SaveSettings()
 	UserInfo.Url = *URL->GetText().ToString();
 	UserInfo.AccountId = *AccountId->GetText().ToString();
 	UserInfo.ApiKey = *APIKey->GetText().ToString();
-
 	SingletonUtil::SaveToIni<FWordbeeUserData>(UserInfo);
 }
 
@@ -361,4 +360,8 @@ void SConnectTab::OnSubWindowClosed(bool isLinked, FString InProjectId, FString 
 	SubWindow->SetVisibility(EVisibility::Collapsed);
 	LinkPanel->SetVisibility(EVisibility::Visible);
 	bIsDocumentLinked = isLinked;
+
+	UserInfo.ProjectId = InProjectId;
+	UserInfo.DocumentId = FCString::Atoi(*InDocumentId);
+	SaveSettings();
 }

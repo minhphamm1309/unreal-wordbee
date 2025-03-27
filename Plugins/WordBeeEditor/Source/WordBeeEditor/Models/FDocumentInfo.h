@@ -17,7 +17,7 @@ struct FLanguageInfo
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Language Info")
 	FString Src;
 	
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Language Info")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Transient, Category = "Language Info")
 	bool IsSelected;
 };
 

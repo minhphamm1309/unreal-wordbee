@@ -132,7 +132,7 @@ void UAPI::FetchDocumentById(UUserData* userInfo, const FString& DocumentId, TFu
 		}
 
 		FDocumentInfo ParsedDocument;
-		if (!FJsonObjectConverter::JsonObjectStringToUStruct<FDocumentInfo>(rawBody, &ParsedDocument, 1, 0))
+		if (!FJsonObjectConverter::JsonObjectStringToUStruct<FDocumentInfo>(rawBody, &ParsedDocument, 0, CPF_Transient))
 		{
 			UE_LOG(LogTemp, Error, TEXT("Failed to parse response"));
 			return;
@@ -240,7 +240,7 @@ void UAPI::FetchLanguages(UUserData* userInfo, TFunction<void(const TArray<FLang
 		{
 			TArray<FLanguageInfo> LanguageList;
 			FString ResponseString = Response->GetContentAsString();
-			if (FJsonObjectConverter::JsonArrayStringToUStruct(ResponseString, &LanguageList, 0, 0))
+			if (FJsonObjectConverter::JsonArrayStringToUStruct(ResponseString, &LanguageList, 0, CPF_Transient))
 			{
 				OnSuccess(LanguageList);
 			}

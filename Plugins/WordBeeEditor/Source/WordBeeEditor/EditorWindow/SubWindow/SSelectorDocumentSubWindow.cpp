@@ -163,8 +163,13 @@ FReply SSelectorDocumentSubWindow::LinkAndCloseWindow()
                               {
 	                              return Doc.Id == DocumentId;
                               })->Name;
+                      		FString projectName = DocumentDataArray.FindByPredicate(
+							  [&](const FDocumentDataResponse& Doc)
+							  {
+	                              return Doc.Id == DocumentId;
+							  })->Preference;
                           ULinkDocumentCommand::SaveDocument(
-                              Document, DocumentId, ProjectId, documentName);
+                              Document, ProjectId, projectName, documentName);
                           OnSubWindowClosed.Execute(true, ProjectId, DocumentId);
                       }
                       else

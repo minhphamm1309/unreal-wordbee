@@ -198,8 +198,13 @@ void SSelectorDocumentSubWindow::OnProjectSelected(TSharedPtr<FString> SelectedI
 {
 	if (SelectedItem.IsValid())
 	{
-		ProjectId = *SelectedItem;
-		UpdateFilteredDocuments(ProjectId);
+		FString projectName = *SelectedItem;
+		// find project name by preference from DocumentDataArray
+		ProjectId = DocumentDataArray.FindByPredicate([&](const FDocumentDataResponse& Doc)
+		{
+			return Doc.Preference == projectName;
+		})->Pid;
+		UpdateFilteredDocuments(projectName);
 		if (DocumentListView.IsValid())
 		{
 			DocumentListView->RequestListRefresh();

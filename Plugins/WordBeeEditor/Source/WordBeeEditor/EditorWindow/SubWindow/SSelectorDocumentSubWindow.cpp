@@ -200,10 +200,11 @@ void SSelectorDocumentSubWindow::OnProjectSelected(TSharedPtr<FString> SelectedI
 	{
 		FString projectName = *SelectedItem;
 		// find project name by preference from DocumentDataArray
-		ProjectId = DocumentDataArray.FindByPredicate([&](const FDocumentDataResponse& Doc)
+		int32 pId = DocumentDataArray.FindByPredicate([&](const FDocumentDataResponse& Doc)
 		{
 			return Doc.Preference == projectName;
 		})->Pid;
+		ProjectId = FString::FromInt(pId);
 		UpdateFilteredDocuments(projectName);
 		if (DocumentListView.IsValid())
 		{

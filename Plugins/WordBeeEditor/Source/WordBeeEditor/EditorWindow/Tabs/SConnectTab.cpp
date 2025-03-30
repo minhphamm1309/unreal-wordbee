@@ -145,6 +145,7 @@ void SConnectTab::Construct(const FArguments& InArgs)
 				.Padding(5)
 				[
 					SAssignNew(DocumentId, SEditableTextBox)
+					.Text(FText::AsNumber(UserInfo.DocumentId, &FNumberFormattingOptions::DefaultNoGrouping()))
 					.HintText(FText::FromString("Enter document ID"))
 					.IsEnabled(this, &SConnectTab::HasAuthenticatingCredentials)
 				]
@@ -235,7 +236,7 @@ FReply SConnectTab::OnLinkDocumentClicked()
                       if (ProjectId.IsEmpty())
                       {
                           ProjectId = documentName;
-                      	UserInfo.ProjectId = ProjectId;
+                      	UserInfo.ProjectId = SDocumentId;
                       }
                   	
                       ULinkDocumentCommand::SaveDocument(
@@ -361,7 +362,6 @@ void SConnectTab::OnSubWindowClosed(bool isLinked, FString InProjectId, FString 
 	SubWindow->SetVisibility(EVisibility::Collapsed);
 	LinkPanel->SetVisibility(EVisibility::Visible);
 	bIsDocumentLinked = isLinked;
-
 	UserInfo.ProjectId = InProjectId;
 	UserInfo.DocumentId = FCString::Atoi(*InDocumentId);
 	SaveSettings();

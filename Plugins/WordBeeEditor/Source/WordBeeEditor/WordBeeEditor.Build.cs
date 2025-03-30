@@ -29,6 +29,7 @@ public class WordBeeEditor : ModuleRules
 				"PropertyEditor",
 				"KismetCompiler", 
 				"DesktopWidgets", 
+				"ToolWidgets"
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);

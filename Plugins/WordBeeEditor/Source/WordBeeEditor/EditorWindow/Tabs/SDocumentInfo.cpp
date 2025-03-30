@@ -25,6 +25,7 @@ void SDocumentInfo::Construct(const FArguments& InArgs)
 		SNew(SBorder)
 		.Padding(10)
 		.BorderImage(FCoreStyle::Get().GetBrush("ToolPanel.GroupBorder"))
+		.BorderBackgroundColor(FLinearColor(0.5f, 0.5f, 0.5f, 1.0f))
 		[
 			SNew(SVerticalBox)
 
@@ -45,7 +46,7 @@ void SDocumentInfo::Construct(const FArguments& InArgs)
 			// Flex Container Details Title
 			+ SVerticalBox::Slot()
 			.AutoHeight()
-			.Padding(FMargin(0, 10, 0, 5))
+			.Padding(FMargin(0, 10, 0, 10))
 			[
 				SNew(STextBlock)
 				.Text(FText::FromString("Flex Container Details"))
@@ -56,26 +57,27 @@ void SDocumentInfo::Construct(const FArguments& InArgs)
 			+ SVerticalBox::Slot()
 			.AutoHeight()
 			[
-				SNew(SUniformGridPanel)
-				.SlotPadding(FMargin(5))
-
+				SNew(SGridPanel)
+				.FillColumn(1, 1.0f)
 				// Document ID
-				+ SUniformGridPanel::Slot(0, 0)
+				+ SGridPanel::Slot(0, 0)
+				.Padding(FMargin(0, 0, 10, 0))
 				[
 					SNew(STextBlock).Text(FText::FromString("Document ID:"))
 				]
-				+ SUniformGridPanel::Slot(1, 0)
+				+ SGridPanel::Slot(1, 0)
 				[
 					SNew(STextBlock)
 					.Text_Lambda([this]() { return FText::FromString(DocumentID); }) // Dynamic binding
 				]
 
 				// Document Name
-				+ SUniformGridPanel::Slot(0, 1)
+				+ SGridPanel::Slot(0, 1)
+				.Padding(FMargin(0, 0, 10, 0))
 				[
 					SNew(STextBlock).Text(FText::FromString("Document Name:"))
 				]
-				+ SUniformGridPanel::Slot(1, 1)
+				+ SGridPanel::Slot(1, 1)
 				[
 					SNew(STextBlock)
 					.Text_Lambda([this]() { return FText::FromString(DocumentName); })
@@ -83,33 +85,49 @@ void SDocumentInfo::Construct(const FArguments& InArgs)
 
 
 				// Source Language
-				+ SUniformGridPanel::Slot(0, 2)
+				+ SGridPanel::Slot(0, 2)
+				.Padding(FMargin(0, 0, 10, 0))
 				[
 					SNew(STextBlock).Text(FText::FromString("Source Language:"))
 				]
-				+ SUniformGridPanel::Slot(1, 2)
+				+ SGridPanel::Slot(1, 2)
 				[
 					SNew(STextBlock)
 					.Text_Lambda([this]() { return FText::FromString(SourceLanguage); })
 				]
 
 				// Target Languages
-				+ SUniformGridPanel::Slot(0, 3)
+				+ SGridPanel::Slot(0, 3)
+				.Padding(FMargin(0, 0, 10, 0))
 				[
-					SNew(STextBlock).Text(FText::FromString("Target Language:"))
+					SNew(STextBlock).Text(FText::FromString("Target Languages:"))
 				]
-				+ SUniformGridPanel::Slot(1, 3)
+				+ SGridPanel::Slot(1, 3)
 				[
-					SNew(STextBlock)
-					.Text_Lambda([this]() { return FText::FromString(FString::Join(TargetLanguages, TEXT(", "))); })
+					SNew(SBox)
+					.MaxDesiredHeight(100) // Restrict height
+					[
+						SNew(SScrollBox)
+						+ SScrollBox::Slot()
+						[
+							SNew(STextBlock)
+							.Text_Lambda([this]()
+							{
+								return FText::FromString(FString::Join(TargetLanguages, TEXT(", ")));
+							})
+							.AutoWrapText(true)
+						]
+					]
 				]
 
+
 				// Last TMS Change
-				+ SUniformGridPanel::Slot(0, 4)
+				+ SGridPanel::Slot(0, 4)
+				.Padding(FMargin(0, 0, 10, 0))
 				[
 					SNew(STextBlock).Text(FText::FromString("Last TMS Change:"))
 				]
-				+ SUniformGridPanel::Slot(1, 4)
+				+ SGridPanel::Slot(1, 4)
 				[
 					SNew(STextBlock)
 					.Text_Lambda([this]() { return FText::FromString(LastTMSChange); })
@@ -117,11 +135,12 @@ void SDocumentInfo::Construct(const FArguments& InArgs)
 
 
 				// Last Synchronization
-				+ SUniformGridPanel::Slot(0, 5)
+				+ SGridPanel::Slot(0, 5)
+				.Padding(FMargin(0, 0, 10, 0))
 				[
 					SNew(STextBlock).Text(FText::FromString("Last Synchronization:"))
 				]
-				+ SUniformGridPanel::Slot(1, 5)
+				+ SGridPanel::Slot(1, 5)
 				[
 					SNew(STextBlock)
 					.Text_Lambda([this]() { return FText::FromString(LastSynchronization); })
@@ -133,22 +152,18 @@ void SDocumentInfo::Construct(const FArguments& InArgs)
 
 void SDocumentInfo::RefreshDocumentInfo()
 {
-	// FWordbeeUserData userInfo = NewObject<UUserData>(); // Create UObject instance
-	// userInfo.AccountId = "gcc-tpt";
-	// userInfo.ApiKey = "80e7bdc7-e521-4739-ba1d-2b53dc34b837";
-	// userInfo.AuthToken = "90d97e6c-c57e-45b3-bb6e-86158968d625";
-	// userInfo.Url = "eu.wordbee-translator.com";
 	FWordbeeUserData userInfo = SingletonUtil::GetFromIni<FWordbeeUserData>();
 	API::FetchDocumentById(userInfo, FString::FromInt(userInfo.DocumentId), [this](const FDocumentInfo& DocumentInfo)
 	{
-		// Directly update UI properties (since it's an editor plugin, no need for GameThread)
 		DocumentID = FString::FromInt(DocumentInfo.Id);
 		DocumentName = DocumentInfo.Name;
-		SourceLanguage = DocumentInfo.Src.V;
+		SourceLanguage = FString::Printf(TEXT("%s (%s)"), *DocumentInfo.Src.T, *DocumentInfo.Src.V);
+		// Clear previous target languages
+		TargetLanguages.Empty();
 		// Convert target languages to a string
 		for (const FLanguageInfo& Lang : DocumentInfo.Trgs)
 		{
-			TargetLanguages.Add(Lang.V);
+			TargetLanguages.Add(FString::Printf(TEXT("%s (%s)"), *Lang.T, *Lang.V));
 		}
 	});
 }

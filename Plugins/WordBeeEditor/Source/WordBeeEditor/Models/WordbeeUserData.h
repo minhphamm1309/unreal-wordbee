@@ -28,8 +28,5 @@ public:
 	FString ProjectId;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="UserData")
-	FString Did;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="UserData")
 	int32 DocumentId;
 };

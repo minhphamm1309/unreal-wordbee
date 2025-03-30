@@ -110,7 +110,7 @@ void API::OnAuthResponseReceived(FHttpRequestPtr Request, FHttpResponsePtr Respo
 }
 
 void API::FetchDocumentById(FWordbeeUserData userInfo, const FString& DocumentId,
-                            TFunction<void(const FDocumentInfo&)> Callback)
+                            TFunction<void(const FDocumentInfo&)> Callback, bool IsRetry)
 {
 	if (userInfo.AccountId.IsEmpty() || userInfo.AuthToken.IsEmpty())
 	{
@@ -129,17 +129,28 @@ void API::FetchDocumentById(FWordbeeUserData userInfo, const FString& DocumentId
 	Request->SetHeader(APIConstant::AuthAccountID, userInfo.AccountId);
 
 	Request->OnProcessRequestComplete().BindLambda(
-		[Callback](FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful)
+		[userInfo, DocumentId, Callback, IsRetry](FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful)
 		{
 			FString rawBody = Response.IsValid() ? Response->GetContentAsString() : TEXT("Request failed");
+			int32 ResponseCode = Response.IsValid() ? Response->GetResponseCode() : -1;
 			UE_LOG(LogTemp, Warning, TEXT("rawBody: %s"), *rawBody);
 			if (!bWasSuccessful || !Response.IsValid())
 			{
-				UE_LOG(LogTemp, Error, TEXT("Request failed: %s (Code: %d)"), *rawBody,
-				       Response.IsValid() ? Response->GetResponseCode() : -1);
+				UE_LOG(LogTemp, Error, TEXT("Request failed: %s (Code: %d)"), *rawBody, ResponseCode);
 				return;
 			}
-
+			if (ResponseCode == 401 && !IsRetry)
+			{
+				API::Authenticate(userInfo.AccountId, userInfo.ApiKey, userInfo.Url, 
+					FOnAuthCompleted::CreateLambda([userInfo, DocumentId, Callback](FString NewToken) mutable
+					{
+						// Update userInfo with new token and retry request
+						userInfo.AuthToken = NewToken;
+						UE_LOG(LogTemp, Log, TEXT("Authentication successful, retrying document fetch..."));
+						API::FetchDocumentById(userInfo, DocumentId, Callback, true);
+					})
+				);
+			}
 			FDocumentInfo ParsedDocument;
 			if (!FJsonObjectConverter::JsonObjectStringToUStruct<FDocumentInfo>(rawBody, &ParsedDocument, 1, 0))
 			{

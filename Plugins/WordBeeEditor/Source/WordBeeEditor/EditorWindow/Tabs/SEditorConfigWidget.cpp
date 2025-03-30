@@ -1,13 +1,11 @@
 #include "SEditorConfigWidget.h"
 
 #include "PropertyCustomizationHelpers.h"
-#include "Widgets/Input/SFilePathPicker.h"
 #include "Styling/AppStyle.h"  // Replaces FEditorStyle for UE5 compatibility
 #include "WordbeeEditor/API/API.h"
 #include "Internationalization/StringTable.h"
+#include "Internationalization/Culture.h"
 #include "Internationalization/Internationalization.h"
-#include "LocalizationTargetTypes.h"
-#include "LocalizationSettings.h"
 #include "WordBeeEditor/Command/CreateDataAsset/SUserData.h"
 #include "WordBeeEditor/Utils/SingletonUtil.h"
 
@@ -17,61 +15,43 @@ class ULocalizationSettings;
 
 void SEditorConfigWidget::Construct(const FArguments& InArgs)
 {
-	Config.Load();
+	Config = SingletonUtil::GetFromIni<FEditorConfig>();
 	MissingLocales.Empty(); // Clear previous items
 	CommonLocales.Empty();
 	FWordbeeUserData userInfo = SingletonUtil::GetFromIni<FWordbeeUserData>();
 	API::FetchLanguages(userInfo, [this](const TArray<FLanguageInfo>& Languages)
 	{
-		UE_LOG(LogTemp, Log, TEXT("Language fetch success"));
-		UE_LOG(LogTemp, Log, TEXT("Wordbee Locales (Total: %d):"), Languages.Num());
-		for (const FLanguageInfo& Lang : Languages)
-		{
-			UE_LOG(LogTemp, Log, TEXT(" - %s"), *Lang.V);
-		}
 		// Get available cultures in Unreal's localization system, include derived cultures
 		TArray<FString> UnrealLocales;
-		FInternationalization::Get().GetCultureNames(UnrealLocales);
+		UnrealLocales = FTextLocalizationManager::Get().GetLocalizedCultureNames(ELocalizationLoadFlags::Game);
 		// Log Unreal locales
 		UE_LOG(LogTemp, Log, TEXT("Unreal Locales (Total: %d):"), UnrealLocales.Num());
 		for (const FString& UnrealLocale : UnrealLocales)
 		{
-			UE_LOG(LogTemp, Log, TEXT(" - %s"), *UnrealLocale);
-		}
-		MissingLocales.Empty();
-		CommonLocales.Empty(); // Clear out the CommonLocales array
-
-		for (const FString& UnrealLocale : UnrealLocales)
-		{
+			TSharedPtr<FCulture> Culture = FInternationalization::Get().GetCulture(UnrealLocale);
+			FString DisplayName = Culture.IsValid() ? Culture->GetDisplayName() : UnrealLocale;
 			// Check if Unreal's locale is missing in the API response
 			bool bIsMissing = !Languages.ContainsByPredicate([&UnrealLocale](const FLanguageInfo& Lang)
 			{
 				return Lang.V == UnrealLocale;
 			});
-
 			if (bIsMissing)
 			{
 				FLanguageInfo NewLang;
 				NewLang.V = UnrealLocale;
-				NewLang.T = UnrealLocale;
+				NewLang.T = DisplayName;
 				MissingLocales.Add(MakeShared<FLanguageInfo>(NewLang));
-
-				UE_LOG(LogTemp, Log, TEXT("Added missing language: %s"), *UnrealLocale);
 			}
 			else
 			{
 				// If the language exists, add it to CommonLocales
 				FLanguageInfo CommonLang;
 				CommonLang.V = UnrealLocale;
-				CommonLang.T = UnrealLocale;
+				CommonLang.T = DisplayName;
 				CommonLocales.Add(MakeShared<FLanguageInfo>(CommonLang));
-
-				UE_LOG(LogTemp, Log, TEXT("Added common language: %s"), *UnrealLocale);
 			}
 		}
 	});
-
-
 	TargetSyncOptions = {
 		MakeShared<FString>(TEXT("IfAnyProblem")),
 		MakeShared<FString>(TEXT("IfAllProblem")),
@@ -250,22 +230,56 @@ void SEditorConfigWidget::Construct(const FArguments& InArgs)
 				.Orientation(Orient_Horizontal) // Set horizontal scrolling
 				+ SScrollBox::Slot()
 				[
-					SNew(SHorizontalBox)
-					// Iterate through CommonLocales and add each as a child slot
-					+ SHorizontalBox::Slot()
-					.AutoWidth()
-					.Padding(5)
-					[
-						SNew(SListView<TSharedPtr<FLanguageInfo>>)
-						.ItemHeight(24)
-						.ListItemsSource(&CommonLocales)
-						.OnGenerateRow(this, &SEditorConfigWidget::GenerateLanguageCheckbox)
-						.Orientation(EOrientation::Orient_Horizontal) // Ensure horizontal orientation
-					]
+					SNew(SListView<TSharedPtr<FLanguageInfo>>)
+					.ItemHeight(24)
+					.ListItemsSource(&CommonLocales)
+					.OnGenerateRow(this, &SEditorConfigWidget::GenerateLanguageCheckbox)
+					.Orientation(EOrientation::Orient_Horizontal) // Ensure horizontal orientation
 				]
 			]
+			// Pull Data Region Label
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(5)
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString("Pull Data Region"))
+				.Font(FAppStyle::Get().GetFontStyle("NormalFont"))
+			]
 
+			// Pull Data Button (Full Width)
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(5)
+			[
+				SNew(SButton)
+				             .HAlign(HAlign_Fill) // Make it full-width
+				             .Text(FText::FromString("Pull Data"))
+				             .HAlign(HAlign_Center) // Center horizontally
+				             .VAlign(VAlign_Center)
+			]
 
+			// Push Data Region Label
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(5)
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString("Push Data Region"))
+				.Font(FAppStyle::Get().GetFontStyle("NormalFont"))
+			]
+
+			// Push Data Button (Full Width)
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(5)
+			[
+				SNew(SButton)
+				             .HAlign(HAlign_Fill) // Make it full-width
+				             .Text(FText::FromString("Push Data"))
+				             .HAlign(HAlign_Center) // Center horizontally
+				             .VAlign(VAlign_Center)
+			]
 		]
 	];
 }
@@ -278,6 +292,7 @@ TSharedRef<ITableRow> SEditorConfigWidget::GenerateLanguageCheckbox(TSharedPtr<F
 			SNew(SHorizontalBox)
 			+ SHorizontalBox::Slot()
 			.AutoWidth()
+			.Padding(FMargin(0, 0, 10, 0))
 			[
 				SNew(SCheckBox)
 				.IsChecked_Lambda([this, Item]() -> ECheckBoxState
@@ -346,7 +361,7 @@ TSharedRef<SWidget> SEditorConfigWidget::GenerateLanguageOption(TSharedPtr<FLang
 
 FReply SEditorConfigWidget::OnSaveClicked()
 {
-	Config.Save();
+	SingletonUtil::SaveToIni<FEditorConfig>(Config);
 	FMessageDialog::Open(EAppMsgType::Ok, FText::FromString("Configuration saved successfully!"));
 	return FReply::Handled();
 }

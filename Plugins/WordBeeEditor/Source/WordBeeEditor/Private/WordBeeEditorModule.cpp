@@ -2,11 +2,15 @@
 
 #include "WordBeeEditor/Command/CreateDataAsset/CreateConfigDataAssetCommand.h"
 #include "WordBeeEditor/Command/CreateDataAsset/CreateUserDataAssetCommand.h"
+#include "WordBeeEditor/EditorWindow/SKeyViewerWidget.h"
 
 void FWordBeeEditorModule::StartupModule()
 {
 	FGlobalTabmanager::Get()->RegisterNomadTabSpawner(WordBeeConfigEditorTabName, FOnSpawnTab::CreateRaw(this, &FWordBeeEditorModule::OnSpawnPluginTab))
-				.SetDisplayName(FText::FromString("WordBee Config Editor"))
+				.SetDisplayName(FText::FromString("Wordbee Config Editor"))
+				.SetMenuType(ETabSpawnerMenuType::Hidden);
+	FGlobalTabmanager::Get()->RegisterNomadTabSpawner(WordBeeKeyViewerTabName, FOnSpawnTab::CreateRaw(this, &FWordBeeEditorModule::OnSpawnKeyViewerTab))
+				.SetDisplayName(FText::FromString("Wordbee Key Viewer"))
 				.SetMenuType(ETabSpawnerMenuType::Hidden);
 
 	// Optionally, add a menu entry
@@ -29,6 +33,14 @@ TSharedRef<SDockTab> FWordBeeEditorModule::OnSpawnPluginTab(const FSpawnTabArgs&
 				SNew(SWordBeeEditorConfigWindow)
 			];
 }
+TSharedRef<SDockTab> FWordBeeEditorModule::OnSpawnKeyViewerTab(const FSpawnTabArgs& SpawnTabArgs)
+{
+	return SNew(SDockTab)
+			.TabRole(ETabRole::NomadTab)
+			[
+				SNew(SKeyViewerWidget)
+			];
+}
 
 void FWordBeeEditorModule::RegisterMenus()
 {
@@ -46,7 +58,7 @@ void FWordBeeEditorModule::RegisterMenus()
 	// Add a submenu called "WordBee Link"
 	Section.AddSubMenu(
 		"WordBeeLinkSubmenu",  // Unique name for the submenu
-		FText::FromString("WordBee Link"),  // Displayed name in the menu
+		FText::FromString("Wordbee Link"),  // Displayed name in the menu
 		FText::FromString("Access WordBee tools"),  // Tooltip for the submenu
 		FNewToolMenuDelegate::CreateLambda([this](UToolMenu* InMenu)
 		{
@@ -55,9 +67,16 @@ void FWordBeeEditorModule::RegisterMenus()
 			SubMenuSection.AddMenuEntry(
 				"WordBeeConfigEditorTab",
 				FText::FromString("Configure"),
-				FText::FromString("Open the WordBee Config Editor"),
+				FText::FromString("Open the Wordbee Config Editor"),
 				FSlateIcon(),
 				FUIAction(FExecuteAction::CreateRaw(this, &FWordBeeEditorModule::OnMenuButtonClicked))
+			);
+			SubMenuSection.AddMenuEntry(
+				"WordBeeKeyViewerTab",
+				FText::FromString("Key viewer"),
+				FText::FromString("Open to edit metadata"),
+				FSlateIcon(),
+				FUIAction(FExecuteAction::CreateRaw(this, &FWordBeeEditorModule::OnKeyViewerClicked))
 			);
 		})
 	);
@@ -68,4 +87,8 @@ void FWordBeeEditorModule::OnMenuButtonClicked()
 	CreateUserDataAssetCommand::Execute();
 	CreateConfigDataAssetCommand::CreateConfigDataAsset();
 	FGlobalTabmanager::Get()->TryInvokeTab(WordBeeConfigEditorTabName);
+}
+void FWordBeeEditorModule::OnKeyViewerClicked()
+{
+	FGlobalTabmanager::Get()->TryInvokeTab(WordBeeKeyViewerTabName);
 }

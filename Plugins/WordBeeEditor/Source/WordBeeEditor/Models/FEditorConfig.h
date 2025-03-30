@@ -24,12 +24,5 @@ struct FEditorConfig
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FString SelectedCollectionPath;
-
-	static FString GetConfigFilePath()
-	{
-		return FPaths::ProjectSavedDir() / TEXT("EditorConfig.json");
-	}
-
-	bool Load();
-	void Save();
+	
 };

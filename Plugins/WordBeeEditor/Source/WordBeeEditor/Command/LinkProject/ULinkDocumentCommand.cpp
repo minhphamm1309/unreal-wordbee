@@ -1,6 +1,7 @@
 #include "ULinkDocumentCommand.h"
 
 #include "WordBeeEditor/API/API.h"
+#include "WordBeeEditor/Command/StoredLocalize/StoredLocailzationCommand.h"
 #include "WordBeeEditor/Models/FDocumentData.h"
 #include "WordBeeEditor/Models/FColumn.h"
 #include "WordBeeEditor/Models/FLangSupport.h"
@@ -288,4 +289,6 @@ void ULinkDocumentCommand::SaveDocument(const FWordbeeDocument& resDocument, con
 	}
 
 	SaveUserData(userData, document, projectId);
+
+	StoredLocailzationCommand::Execute(resDocument.Segments);
 }

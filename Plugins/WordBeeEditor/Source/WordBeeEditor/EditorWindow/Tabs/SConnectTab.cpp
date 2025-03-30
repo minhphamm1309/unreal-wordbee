@@ -172,15 +172,6 @@ void SConnectTab::Construct(const FArguments& InArgs)
  // Bind button enabled state
 						             .OnClicked(this, &SConnectTab::OnLinkDocumentClicked)
 					]
-
-					+ SHorizontalBox::Slot()
-					.HAlign(HAlign_Right)
-					.Padding(5)
-					[
-						SNew(SButton)
-									 .Text(FText::FromString("Test Language"))
-									 .OnClicked(this, &SConnectTab::OnTestLanguageClicked)
-					]
 				]
 			]
 		]

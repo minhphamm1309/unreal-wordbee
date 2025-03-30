@@ -267,7 +267,7 @@ void API::DownloadFile(FWordbeeUserData userInfo, const FString& FileToken, FOnP
 void API::FetchLanguages(FWordbeeUserData userInfo, TFunction<void(const TArray<FLanguageInfo>&)> OnSuccess)
 {
 	TSharedRef<IHttpRequest, ESPMode::ThreadSafe> Request = FHttpModule::Get().CreateRequest();
-	FString url = ConstructUrl(userInfo.AccountId, userInfo.Url, FString::Format(*ROUTER_PROJECT_LOCALES, {3191}));
+	FString url = ConstructUrl(userInfo.AccountId, userInfo.Url, FString::Format(*ROUTER_PROJECT_LOCALES, {userInfo.ProjectId}));
 	Request->SetURL(url);
 	UE_LOG(LogTemp, Log, TEXT("Fetching languages with user info: %s"), *url);
 	Request->SetVerb(TEXT("GET"));

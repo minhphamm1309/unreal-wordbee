@@ -163,8 +163,13 @@ FReply SSelectorDocumentSubWindow::LinkAndCloseWindow()
                               {
 	                              return Doc.Id == DocumentId;
                               })->Name;
+                      		FString projectName = DocumentDataArray.FindByPredicate(
+							  [&](const FDocumentDataResponse& Doc)
+							  {
+	                              return Doc.Id == DocumentId;
+							  })->Preference;
                           ULinkDocumentCommand::SaveDocument(
-                              Document, DocumentId, ProjectId, documentName);
+                              Document, ProjectId, projectName, documentName);
                           OnSubWindowClosed.Execute(true, ProjectId, DocumentId);
                       }
                       else
@@ -198,8 +203,14 @@ void SSelectorDocumentSubWindow::OnProjectSelected(TSharedPtr<FString> SelectedI
 {
 	if (SelectedItem.IsValid())
 	{
-		ProjectId = *SelectedItem;
-		UpdateFilteredDocuments(ProjectId);
+		FString projectName = *SelectedItem;
+		// find project name by preference from DocumentDataArray
+		int32 pId = DocumentDataArray.FindByPredicate([&](const FDocumentDataResponse& Doc)
+		{
+			return Doc.Preference == projectName;
+		})->Pid;
+		ProjectId = FString::FromInt(pId);
+		UpdateFilteredDocuments(projectName);
 		if (DocumentListView.IsValid())
 		{
 			DocumentListView->RequestListRefresh();

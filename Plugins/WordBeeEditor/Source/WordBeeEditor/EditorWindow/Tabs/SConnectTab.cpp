@@ -5,8 +5,15 @@
 #include "WordBeeEditor/Command/DocumentList/UGetDocumentsCommand.h"
 #include "WordBeeEditor/Command/DocumentList/UGetDocumentsCommand.h"
 #include "WordBeeEditor/Command/LinkProject/ULinkDocumentCommand.h"
+#include "WordBeeEditor/Command/StoredLocalize/StoredLocailzationCommand.h"
 #include "WordBeeEditor/EditorWindow/SubWindow/SSelectorDocumentSubWindow.h"
 #include "WordBeeEditor/Utils/SingletonUtil.h"
+
+FReply SConnectTab::OnTestLanguageClicked()
+{
+	//StoredLocailzationCommand::Execute(TArray<FSegment>());
+	return FReply::Handled();
+}
 
 void SConnectTab::Construct(const FArguments& InArgs)
 {
@@ -365,4 +372,5 @@ void SConnectTab::OnSubWindowClosed(bool isLinked, FString InProjectId, FString 
 	UserInfo.ProjectId = InProjectId;
 	UserInfo.DocumentId = FCString::Atoi(*InDocumentId);
 	SaveSettings();
+
 }

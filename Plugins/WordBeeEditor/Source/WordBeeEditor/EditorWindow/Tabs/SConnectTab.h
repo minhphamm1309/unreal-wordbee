@@ -11,6 +11,7 @@ public:
 	SLATE_BEGIN_ARGS(SConnectTab) {}
 	SLATE_END_ARGS()
 
+	FReply OnTestLanguageClicked();
 	/** Constructs this widget with InArgs */
 	void Construct(const FArguments& InArgs);
 

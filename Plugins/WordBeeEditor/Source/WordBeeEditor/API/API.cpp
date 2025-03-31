@@ -6,8 +6,10 @@
 #include "JsonUtilities.h"
 #include "Json.h"
 #include "Misc/MessageDialog.h"  // For showing messages in the editor
+#include "WordBeeEditor/Models/FDocumentData.h"
 #include "WordbeeEditor/Models/WordbeeResponse.h"
 #include "WordBeeEditor/Utils/APIConstant.h"
+#include "WordBeeEditor/Utils/SingletonUtil.h"
 
 
 const FString API::ROUTER_AUTH = "api/auth/token";
@@ -18,6 +20,9 @@ const FString API::ROUTER_POLL = "api/trm/status?requestid={0}";
 const FString API::ROUTER_DownloadDocument = "api/media/get/{0}";
 const FString API::ROUTER_DOCUMENT_POOLING = "api/trm/status?requestid={0}";
 const FString API::ROUTER_PROJECT_LOCALES = "api/projects/{0}/locales";
+const FString API::ROUTER_DOCUMENT_UPDATE = "api/apps/wbflex/documents/{0}/contents/push";
+
+
 void API::Authenticate(FString AccountId, FString ApiKey, FString BaseUrl, FOnAuthCompleted callback)
 {
 	FString URL = ConstructUrl(AccountId, BaseUrl, ROUTER_AUTH);
@@ -129,7 +134,8 @@ void API::FetchDocumentById(FWordbeeUserData userInfo, const FString& DocumentId
 	Request->SetHeader(APIConstant::AuthAccountID, userInfo.AccountId);
 
 	Request->OnProcessRequestComplete().BindLambda(
-		[userInfo, DocumentId, Callback, IsRetry](FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful)
+		[userInfo, DocumentId, Callback, IsRetry](FHttpRequestPtr Request, FHttpResponsePtr Response,
+		                                          bool bWasSuccessful)
 		{
 			FString rawBody = Response.IsValid() ? Response->GetContentAsString() : TEXT("Request failed");
 			int32 ResponseCode = Response.IsValid() ? Response->GetResponseCode() : -1;
@@ -141,14 +147,16 @@ void API::FetchDocumentById(FWordbeeUserData userInfo, const FString& DocumentId
 			}
 			if (ResponseCode == 401 && !IsRetry)
 			{
-				API::Authenticate(userInfo.AccountId, userInfo.ApiKey, userInfo.Url, 
-					FOnAuthCompleted::CreateLambda([userInfo, DocumentId, Callback](FString NewToken) mutable
-					{
-						// Update userInfo with new token and retry request
-						userInfo.AuthToken = NewToken;
-						UE_LOG(LogTemp, Log, TEXT("Authentication successful, retrying document fetch..."));
-						API::FetchDocumentById(userInfo, DocumentId, Callback, true);
-					})
+				API::Authenticate(userInfo.AccountId, userInfo.ApiKey, userInfo.Url,
+				                  FOnAuthCompleted::CreateLambda(
+					                  [userInfo, DocumentId, Callback](FString NewToken) mutable
+					                  {
+						                  // Update userInfo with new token and retry request
+						                  userInfo.AuthToken = NewToken;
+						                  UE_LOG(LogTemp, Log,
+						                         TEXT("Authentication successful, retrying document fetch..."));
+						                  API::FetchDocumentById(userInfo, DocumentId, Callback, true);
+					                  })
 				);
 			}
 			FDocumentInfo ParsedDocument;
@@ -171,12 +179,22 @@ void API::PullDocument(FWordbeeUserData userInfo, const FString& DocumentId, FOn
 	Request->SetURL(url);
 	Request->SetVerb(TEXT("POST"));
 
-	Request->SetHeader(TEXT("Content-Type"), TEXT("application/x-www-form-urlencoded"));
+	Request->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
 	Request->SetHeader(TEXT("X-Auth-AccountId"), userInfo.AccountId);
 	Request->SetHeader(TEXT("X-Auth-Token"), userInfo.AuthToken);
 
-	Request->SetContentAsString(
-		TEXT("{ \"includeComments\": true, \"includeCustomFields\": true, \"copySourceToTarget\": false }"));
+	TSharedPtr<FJsonObject> JsonObject = MakeShareable(new FJsonObject());
+
+	JsonObject->SetBoolField(TEXT("includeComments"), true);
+	JsonObject->SetBoolField(TEXT("includeCustomFields"), true);
+	JsonObject->SetBoolField(TEXT("copySourceToTarget"), false);
+	JsonObject->SetBoolField(TEXT("excludeTexts"), "none");
+
+	FString RequestBody;
+	TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&RequestBody);
+	FJsonSerializer::Serialize(JsonObject.ToSharedRef(), Writer);
+
+	Request->SetContentAsString(RequestBody);
 
 	Request->OnProcessRequestComplete().BindLambda([=](FHttpRequestPtr Req, FHttpResponsePtr Res, bool bSuccess)
 	{
@@ -192,6 +210,134 @@ void API::PullDocument(FWordbeeUserData userInfo, const FString& DocumentId, FOn
 		}
 	});
 	Request->ProcessRequest();
+}
+
+void API::ExportRecords(const int32& documentId, TArray<FRecord> Records, FOnUpdateDocumentComplete onCompleted,
+                        FRecord* TargetRecord, FColumn* TargetCol, bool bIsRetry)
+{
+	FWordbeeUserData userInfo = SingletonUtil::GetFromIni<FWordbeeUserData>();
+	TSharedRef<IHttpRequest, ESPMode::ThreadSafe> Request = FHttpModule::Get().CreateRequest();
+	FString url = ConstructUrl(userInfo.AccountId, userInfo.Url,
+	                           FString::Format(*ROUTER_DOCUMENT_UPDATE, {documentId}));
+	Request->SetURL(url);
+	Request->SetVerb(TEXT("POST"));
+
+	Request->SetHeader(TEXT("X-Auth-AccountId"), userInfo.AccountId);
+	Request->SetHeader(TEXT("X-Auth-Token"), userInfo.AuthToken);
+	Request->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
+
+	TArray<TSharedPtr<FJsonValue>> SegmentsArray;
+
+	for (const FRecord& Record : Records)
+	{
+		bool bIsCreateNewRecord = Record.originalRecordID.IsEmpty();
+		FString RecordID = bIsCreateNewRecord ? Record.recordID : Record.originalRecordID;
+
+		if (TargetRecord)
+		{
+			FString TargetRecordID = bIsCreateNewRecord ? TargetRecord->recordID : TargetRecord->originalRecordID;
+			if (RecordID != TargetRecordID)
+			{
+				continue;
+			}
+		}
+
+		TSharedPtr<FJsonObject> TextsData = MakeShareable(new FJsonObject);
+
+		for (const FColumn& Col : Record.columns)
+		{
+			if (TargetCol && Col.columnID != TargetCol->columnID)
+			{
+				continue;
+			}
+
+			if (Col.text.IsEmpty())
+			{
+				continue;
+			}
+
+			TSharedPtr<FJsonObject> ColDict = MakeShareable(new FJsonObject);
+			ColDict->SetStringField(TEXT("v"), Col.text);
+
+			if (Col.cfs.Num() > 0)
+			{
+				TArray<TSharedPtr<FJsonValue>> CfsArray;
+				for (const FCustomField& Cfs : Col.cfs)
+				{
+					TSharedPtr<FJsonObject> CfsDict = MakeShareable(new FJsonObject);
+					CfsDict->SetStringField(TEXT("t"), Cfs.Title);
+					CfsDict->SetStringField(TEXT("id"), Cfs.Id);
+					CfsDict->SetStringField(TEXT("v"), Cfs.V);
+
+					CfsArray.Add(MakeShareable(new FJsonValueObject(CfsDict)));
+				}
+
+				ColDict->SetArrayField(TEXT("cfs"), CfsArray);
+			}
+
+			TextsData->SetObjectField(Col.columnID, ColDict);
+		}
+
+		TSharedPtr<FJsonObject> RecordData = MakeShareable(new FJsonObject);
+		RecordData->SetStringField(TEXT("key"), RecordID);
+		RecordData->SetObjectField(TEXT("texts"), TextsData);
+
+		SegmentsArray.Add(MakeShareable(new FJsonValueObject(RecordData)));
+	}
+
+	TSharedPtr<FJsonObject> Mode = MakeShareable(new FJsonObject);
+	Mode->SetStringField(TEXT("mode"), TEXT("partial"));
+
+	TSharedPtr<FJsonObject> Body = MakeShareable(new FJsonObject);
+	Body->SetObjectField(TEXT("header"), Mode);
+	Body->SetArrayField(TEXT("segments"), SegmentsArray);
+
+	FString JsonBody;
+	TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&JsonBody);
+	FJsonSerializer::Serialize(Body.ToSharedRef(), Writer);
+
+	Request->SetContentAsString(JsonBody);
+	Request->OnProcessRequestComplete().BindLambda(
+		[documentId, Records, TargetRecord, TargetCol, bIsRetry,onCompleted](
+		FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful)
+		{
+			if (bWasSuccessful)
+			{
+				TSharedPtr<FJsonObject> JsonObject;
+				TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(*Response->GetContentAsString());
+				if (FJsonSerializer::Deserialize(Reader, JsonObject))
+				{
+					int32 RequestId = JsonObject->GetObjectField("trm")->GetIntegerField("requestid");
+					onCompleted.ExecuteIfBound(true, RequestId);
+				}
+			}
+			else if (!bWasSuccessful || Response->GetResponseCode() == 401) // Unauthorized
+			{
+				if (!bIsRetry)
+				{
+					// Retry with authentication
+					ExportRecords(documentId, Records, onCompleted, TargetRecord, TargetCol, true);
+				}
+				if (bIsRetry)
+				{
+					onCompleted.ExecuteIfBound(false, 0);
+				}
+			}
+		});
+
+	Request->ProcessRequest();
+}
+
+void API::PushRecords(TArray<FRecord> Records, FOnUpdateDocumentComplete onCompleted)
+{
+	FDocumentData document = SingletonUtil::GetFromIni<FDocumentData>();
+	ExportRecords(document.did, Records, FOnUpdateDocumentComplete::CreateLambda([=](bool bSuccess, const int32& RequestId)
+	{
+		CheckStatus(RequestId, 0, FOnCheckStatusComplete::CreateLambda([=](bool bSuccess)
+		{
+			onCompleted.ExecuteIfBound(bSuccess, 0);
+		}));
+	}));
 }
 
 void API::CheckStatus(FWordbeeUserData userInfo, int32 RequestId, int32 RetryCount, FOnPullDocumentComplete callback)
@@ -211,6 +357,7 @@ void API::CheckStatus(FWordbeeUserData userInfo, int32 RequestId, int32 RetryCou
 	Request->SetHeader(TEXT("X-Auth-AccountId"), userInfo.AccountId);
 	Request->SetHeader(TEXT("X-Auth-Token"), userInfo.AuthToken);
 	Request->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
+
 
 	Request->OnProcessRequestComplete().BindLambda([=](FHttpRequestPtr Req, FHttpResponsePtr Res, bool bSuccess)
 	{
@@ -242,6 +389,56 @@ void API::CheckStatus(FWordbeeUserData userInfo, int32 RequestId, int32 RetryCou
 	Request->ProcessRequest();
 }
 
+void API::CheckStatus(int32 RequestId, int32 RetryCount, FOnCheckStatusComplete callback)
+{
+	const int32 MaxRetries = 15; // Stop checking after 15 retries (~30 seconds)
+	if (RequestId == 0 || RetryCount >= MaxRetries)
+	{
+		UE_LOG(LogTemp, Error, TEXT("Status check timed out or invalid request ID."));
+		callback.ExecuteIfBound("");
+		return;
+	}
+	FWordbeeUserData userInfo = SingletonUtil::GetFromIni<FWordbeeUserData>();
+	TSharedRef<IHttpRequest, ESPMode::ThreadSafe> Request = FHttpModule::Get().CreateRequest();
+	FString url = ConstructUrl(userInfo.AccountId, userInfo.Url, FString::Format(*ROUTER_POLL, {RequestId}));
+	Request->SetURL(url);
+	Request->SetVerb(TEXT("GET"));
+
+	Request->SetHeader(TEXT("X-Auth-AccountId"), userInfo.AccountId);
+	Request->SetHeader(TEXT("X-Auth-Token"), userInfo.AuthToken);
+	Request->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
+
+
+	Request->OnProcessRequestComplete().BindLambda([=](FHttpRequestPtr Req, FHttpResponsePtr Res, bool bSuccess)
+	{
+		if (bSuccess && Res.IsValid())
+		{
+			TSharedPtr<FJsonObject> JsonObject;
+			TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(Res->GetContentAsString());
+
+			if (FJsonSerializer::Deserialize(Reader, JsonObject))
+			{
+				FString Status = JsonObject->GetObjectField("trm")->GetStringField("status");
+				if (Status == "Finished")
+				{
+					callback.ExecuteIfBound(true);
+				}
+				else
+				{
+					FPlatformProcess::Sleep(2.0f); // Wait before retrying
+					CheckStatus(RequestId, RetryCount + 1, callback); // Increment retry count
+				}
+			}
+		}
+		else
+		{
+			callback.ExecuteIfBound(false);
+			UE_LOG(LogTemp, Error, TEXT("Failed to get status response."));
+		}
+	});
+	Request->ProcessRequest();
+}
+
 void API::DownloadFile(FWordbeeUserData userInfo, const FString& FileToken, FOnPullDocumentComplete callback)
 {
 	TSharedRef<IHttpRequest, ESPMode::ThreadSafe> Request = FHttpModule::Get().CreateRequest();
@@ -264,35 +461,39 @@ void API::DownloadFile(FWordbeeUserData userInfo, const FString& FileToken, FOnP
 	});
 	Request->ProcessRequest();
 }
+
 void API::FetchLanguages(FWordbeeUserData userInfo, TFunction<void(const TArray<FLanguageInfo>&)> OnSuccess)
 {
 	TSharedRef<IHttpRequest, ESPMode::ThreadSafe> Request = FHttpModule::Get().CreateRequest();
-	FString url = ConstructUrl(userInfo.AccountId, userInfo.Url, FString::Format(*ROUTER_PROJECT_LOCALES, {userInfo.ProjectId}));
+	FString url = ConstructUrl(userInfo.AccountId, userInfo.Url,
+	                           FString::Format(*ROUTER_PROJECT_LOCALES, {userInfo.ProjectId}));
 	Request->SetURL(url);
 	UE_LOG(LogTemp, Log, TEXT("Fetching languages with user info: %s"), *url);
 	Request->SetVerb(TEXT("GET"));
 	Request->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
 	Request->SetHeader(APIConstant::AuthToken, userInfo.AuthToken);
 	Request->SetHeader(APIConstant::AuthAccountID, userInfo.AccountId);
-	Request->OnProcessRequestComplete().BindLambda([OnSuccess](FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful)
-	{
-		if (bWasSuccessful && Response.IsValid() && Response->GetResponseCode() == 200)
+	Request->OnProcessRequestComplete().BindLambda(
+		[OnSuccess](FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful)
 		{
-			TArray<FLanguageInfo> LanguageList;
-			FString ResponseString = Response->GetContentAsString();
-			if (FJsonObjectConverter::JsonArrayStringToUStruct(ResponseString, &LanguageList, 0, CPF_Transient))
+			if (bWasSuccessful && Response.IsValid() && Response->GetResponseCode() == 200)
 			{
-				OnSuccess(LanguageList);
+				TArray<FLanguageInfo> LanguageList;
+				FString ResponseString = Response->GetContentAsString();
+				if (FJsonObjectConverter::JsonArrayStringToUStruct(ResponseString, &LanguageList, 0, CPF_Transient))
+				{
+					OnSuccess(LanguageList);
+				}
+				else
+				{
+					UE_LOG(LogTemp, Error, TEXT("Failed to parse JSON into FLanguageInfo array"));
+				}
 			}
 			else
 			{
-				UE_LOG(LogTemp, Error, TEXT("Failed to parse JSON into FLanguageInfo array"));
+				UE_LOG(LogTemp, Error, TEXT("Failed to fetch languages! Response Code: %d"),
+				       Response.IsValid() ? Response->GetResponseCode() : -1);
 			}
-		}
-		else
-		{
-			UE_LOG(LogTemp, Error, TEXT("Failed to fetch languages! Response Code: %d"), Response.IsValid() ? Response->GetResponseCode() : -1);
-		}
-	});
+		});
 	Request->ProcessRequest();
 }

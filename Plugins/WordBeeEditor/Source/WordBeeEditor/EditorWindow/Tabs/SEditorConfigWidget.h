@@ -28,12 +28,14 @@ private:
 	TArray<TSharedPtr<FLanguageInfo>> MissingLocales;
 	TArray<TSharedPtr<FLanguageInfo>> CommonLocales;
 	TSharedPtr<STileView<TSharedPtr<FLanguageInfo>>> LanguageTileView;
+	FDelegateHandle WatcherHandle;
 	void OnAutoSyncChanged(ECheckBoxState NewState);
 	void OnSyncIntervalChanged(const FText& NewText, ETextCommit::Type CommitType);
 	void OnTargetSyncChanged(TSharedPtr<FString> NewValue, ESelectInfo::Type);
 	TSharedRef<SWidget> MakeComboWidget(TSharedPtr<FString> InOption);
 	FReply OnSaveClicked();
 	FReply OnCPullButtonClicked();
+	FReply OnPushButtonClicked();
 	TSharedPtr<FString> GetCurrentTargetSyncOption() const;
 	void OnStringTableSelected(const FAssetData& AssetData);
 	TSharedRef<SWidget>GenerateLanguageOption(TSharedPtr<FLanguageInfo> Item);

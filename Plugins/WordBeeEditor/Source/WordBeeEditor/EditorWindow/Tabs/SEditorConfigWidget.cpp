@@ -1,5 +1,8 @@
 #include "SEditorConfigWidget.h"
 
+#include "DirectoryWatcherModule.h"
+#include "IDirectoryWatcher.h"
+#include "LocalizationSettings.h"
 #include "PropertyCustomizationHelpers.h"
 #include "Framework/Notifications/NotificationManager.h"
 #include "Styling/AppStyle.h"  // Replaces FEditorStyle for UE5 compatibility
@@ -375,8 +378,6 @@ FReply SEditorConfigWidget::OnSaveClicked()
 
 FReply SEditorConfigWidget::OnCPullButtonClicked()
 {
-	
-
 	TArray<FString> SelectedLanguages;
 	for (const TSharedPtr<FLanguageInfo>& Lang : CommonLocales)
 	{
@@ -403,9 +404,16 @@ FReply SEditorConfigWidget::OnCPullButtonClicked()
 		}
 		segments.Add(segment);
 	}
-	StoredLocailzationCommand::Execute(segments);
+
+	FString msg = TEXT("Pulling data from Wordbee...");
+	if (segments.Num() > 0)
+		StoredLocailzationCommand::Execute(segments);
+	else
+	{
+		msg = TEXT("No data to pull from Wordbee.");
+	}
 	
-	FNotificationInfo Info(FText::FromString("Pull Data completed!"));
+	FNotificationInfo Info(FText::FromString(msg));
 	Info.bFireAndForget = false; // Set this to false so we can control the notification manually
 	Info.FadeOutDuration = 2.0f; // How long it takes to fade out when closing
 	Info.ExpireDuration = 0.0f;  // Don't automatically expire
@@ -417,6 +425,13 @@ FReply SEditorConfigWidget::OnCPullButtonClicked()
 		NotificationPtr->SetCompletionState(SNotificationItem::CS_Success); // Optionally, change the state to indicate success
 		NotificationPtr->ExpireAndFadeout(); 
 	}
+	
+	return FReply::Handled();
+}
+
+FReply SEditorConfigWidget::OnPushButtonClicked()
+{
+
 	
 	return FReply::Handled();
 }

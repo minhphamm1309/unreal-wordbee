@@ -225,7 +225,7 @@ void ULinkDocumentCommand::AddSegmentsToDocument(FDocumentData& document, const 
 			FColumn NewColumn(kpText.Key, kpText.Value.v);
 			NewColumn.cfs = kpText.Value.cfs;
 			NewColumn.convertedLang = ConvertedLang;
-
+			NewColumn.text = kpText.Value.v;
 			NewRecord.columns.Add(NewColumn);
 		}
 
@@ -290,5 +290,4 @@ void ULinkDocumentCommand::SaveDocument(const FWordbeeDocument& resDocument, con
 
 	SaveUserData(userData, document, projectId);
 
-	StoredLocailzationCommand::Execute(resDocument.Segments);
 }

@@ -1,13 +1,11 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "FLangSupport.h"
+#include "FRecord.h"
 #include "UObject/NoExportTypes.h"
 #include "FDocumentData.generated.h"
 
-struct FLangSupport;
-struct FRecord;
-struct FLanguageInfo;
-struct FCustomField;
 
 // Unreal Engine version of the C# Document class
 USTRUCT(BlueprintType)

@@ -1,12 +1,17 @@
 #include "SEditorConfigWidget.h"
 
 #include "PropertyCustomizationHelpers.h"
+#include "Framework/Notifications/NotificationManager.h"
 #include "Styling/AppStyle.h"  // Replaces FEditorStyle for UE5 compatibility
 #include "WordbeeEditor/API/API.h"
 #include "Internationalization/StringTable.h"
 #include "Internationalization/Culture.h"
 #include "Internationalization/Internationalization.h"
+#include "Widgets/Notifications/SNotificationList.h"
 #include "WordBeeEditor/Command/CreateDataAsset/SUserData.h"
+#include "WordBeeEditor/Command/StoredLocalize/StoredLocailzationCommand.h"
+#include "WordBeeEditor/Models/FDocumentData.h"
+#include "WordBeeEditor/Models/FRecord.h"
 #include "WordBeeEditor/Utils/SingletonUtil.h"
 
 struct FLocalizationTargetSettings;
@@ -205,6 +210,7 @@ void SEditorConfigWidget::Construct(const FArguments& InArgs)
 				.Padding(5)
 				[
 					SNew(SCheckBox)
+					
 					.OnCheckStateChanged(this, &SEditorConfigWidget::OnLanguageCheckboxChanged)
 				]
 			]
@@ -245,6 +251,7 @@ void SEditorConfigWidget::Construct(const FArguments& InArgs)
 				             .Text(FText::FromString("Pull Data"))
 				             .HAlign(HAlign_Center) // Center horizontally
 				             .VAlign(VAlign_Center)
+				.OnClicked(this, &SEditorConfigWidget::OnCPullButtonClicked)
 			]
 
 			// Push Data Region Label
@@ -351,6 +358,48 @@ FReply SEditorConfigWidget::OnSaveClicked()
 {
 	SingletonUtil::SaveToIni<FEditorConfig>(Config);
 	FMessageDialog::Open(EAppMsgType::Ok, FText::FromString("Configuration saved successfully!"));
+	return FReply::Handled();
+}
+
+FReply SEditorConfigWidget::OnCPullButtonClicked()
+{
+	TArray<FString> SelectedLanguages;
+	for (const TSharedPtr<FLanguageInfo>& Lang : CommonLocales)
+	{
+		if (Lang->IsSelected)
+		{
+			SelectedLanguages.Add(Lang->V);
+		}
+	}
+	FDocumentData document = SingletonUtil::GetFromIni<FDocumentData>();
+	TArray<FSegment> segments;
+	// convert all document.Records to TArray<FSegment>
+	for (const FRecord& record : document.records)
+	{
+		FSegment segment;
+		segment.key = record.recordID;
+
+		for (const auto& text : record.columns)
+		{
+			if (!SelectedLanguages.Contains(text.columnID)) continue;
+			FSegmentText textSegment;
+			textSegment.v = text.text;
+			segment.texts.Add(text.columnID, textSegment);
+		}
+		segments.Add(segment);
+	}
+	StoredLocailzationCommand::Execute(segments);
+	FNotificationInfo Info(FText::FromString("Pull Data completed!"));
+	Info.bFireAndForget = false; // Set this to false so we can control the notification manually
+	Info.FadeOutDuration = 2.0f; // How long it takes to fade out when closing
+	Info.ExpireDuration = 0.0f;  // Don't automatically expire
+	NotificationPtr = FSlateNotificationManager::Get().AddNotification(Info);
+	if (NotificationPtr.IsValid())
+	{
+		NotificationPtr->SetCompletionState(SNotificationItem::CS_Pending);
+		NotificationPtr->SetCompletionState(SNotificationItem::CS_Success); // Optionally, change the state to indicate success
+		NotificationPtr->ExpireAndFadeout(); 
+	}
 	return FReply::Handled();
 }
 

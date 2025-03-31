@@ -37,11 +37,13 @@ private:
 	void OnTargetSyncChanged(TSharedPtr<FString> NewValue, ESelectInfo::Type);
 	TSharedRef<SWidget> MakeComboWidget(TSharedPtr<FString> InOption);
 	FReply OnSaveClicked();
+	FReply OnCPullButtonClicked();
 	TSharedPtr<FString> GetCurrentTargetSyncOption() const;
 	void OnStringTableSelected(const FAssetData& AssetData);
 	TSharedRef<SWidget>GenerateLanguageOption(TSharedPtr<FLanguageInfo> Item);
 	void OnLanguageCheckboxChanged(ECheckBoxState NewState);
 	TSharedRef<ITableRow> GenerateLanguageCheckbox(TSharedPtr<FLanguageInfo> Item, const TSharedRef<STableViewBase>& OwnerTable);
+	TSharedPtr<SNotificationItem> NotificationPtr;
 	FReply OnReloadLanguagesClicked();
 	void FetchLangsFromAPI();
 };

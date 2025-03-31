@@ -171,12 +171,13 @@ void API::PullDocument(FWordbeeUserData userInfo, const FString& DocumentId, FOn
 	Request->SetURL(url);
 	Request->SetVerb(TEXT("POST"));
 
-	Request->SetHeader(TEXT("Content-Type"), TEXT("application/x-www-form-urlencoded"));
+	Request->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
 	Request->SetHeader(TEXT("X-Auth-AccountId"), userInfo.AccountId);
 	Request->SetHeader(TEXT("X-Auth-Token"), userInfo.AuthToken);
 
-	Request->SetContentAsString(
-		TEXT("{ \"includeComments\": true, \"includeCustomFields\": true, \"copySourceToTarget\": false }"));
+	// Directly set the JSON string
+	FString RequestBody = TEXT("{\"includeComments\":true,\"includeCustomFields\":true,\"copySourceToTarget\":false}");
+	Request->SetContentAsString(RequestBody);
 
 	Request->OnProcessRequestComplete().BindLambda([=](FHttpRequestPtr Req, FHttpResponsePtr Res, bool bSuccess)
 	{

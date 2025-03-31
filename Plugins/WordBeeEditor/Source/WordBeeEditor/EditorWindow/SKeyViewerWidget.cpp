@@ -12,52 +12,37 @@ void SKeyViewerWidget::Construct(const FArguments& InArgs)
     ChildSlot
     [
         SNew(SVerticalBox)
-        // String Table Selection
+        // Key Input Field with Reset Button
         + SVerticalBox::Slot()
         .AutoHeight()
         .Padding(5)
         [
-            SNew(STextBlock).Text(FText::FromString("Select String Table"))
-        ]
-        + SVerticalBox::Slot()
-        .AutoHeight()
-        .Padding(5)
-        [
-            SNew(SSearchableComboBox)
-            .OptionsSource(&AvailableStringTables)
-            .OnSelectionChanged(this, &SKeyViewerWidget::OnStringTableSelected)
-            .OnGenerateWidget_Lambda([](TSharedPtr<FString> InOption)
-            {
-                return SNew(STextBlock).Text(FText::FromString(*InOption));
-            })
-            [
-                SNew(STextBlock).Text(FText::FromString("Select a table"))
-            ]
-        ]
+            SNew(SHorizontalBox)
 
-        // Key Selection
-        + SVerticalBox::Slot()
-        .AutoHeight()
-        .Padding(5)
-        [
-            SNew(STextBlock).Text(FText::FromString("Select Key"))
-        ]
-        + SVerticalBox::Slot()
-        .AutoHeight()
-        .Padding(5)
-        [
-            SAssignNew(KeyComboBox, SSearchableComboBox)
-            .OptionsSource(&AvailableKeys)
-            .OnSelectionChanged(this, &SKeyViewerWidget::OnKeySelected)
-            .OnGenerateWidget_Lambda([](TSharedPtr<FString> InOption)
-            {
-                return SNew(STextBlock).Text(FText::FromString(*InOption));
-            })
+            // Key Input Field
+            + SHorizontalBox::Slot()
+            .FillWidth(1.0f) // Allow input field to take most of the space
             [
-                SNew(STextBlock).Text(FText::FromString("Select a key"))
+                SNew(SEditableTextBox)
+                .HintText(FText::FromString("Enter Key"))
+                .OnTextChanged(this, &SKeyViewerWidget::OnKeyChanged)
+            ]
+
+            // Reset Button with "Get data" tooltip
+            + SHorizontalBox::Slot()
+            .AutoWidth()
+            .Padding(5, 0) // Add some spacing
+            [
+                SNew(SButton)
+                .ButtonStyle(FCoreStyle::Get(), "NoBorder") // No border for a cleaner look
+                .OnClicked(this, &SKeyViewerWidget::OnGetDataClicked)
+                .ToolTipText(FText::FromString("Get data"))
+                [
+                    SNew(SImage)
+                    .Image(FCoreStyle::Get().GetBrush("Icons.Refresh")) // Use a refresh icon
+                ]
             ]
         ]
-        
         // Min Length Input Field
         + SVerticalBox::Slot()
         .AutoHeight()
@@ -171,20 +156,30 @@ void SKeyViewerWidget::PopulateStringTables()
 
 }
 
-void SKeyViewerWidget::PopulateKeysForSelectedTable()
+void SKeyViewerWidget::PopulateLocalizationKeys()
 {
-    
+
 }
 
 // Handle String Table Selection
 void SKeyViewerWidget::OnStringTableSelected(TSharedPtr<FString> NewValue, ESelectInfo::Type)
 {
     SelectedStringTable = NewValue;
-    PopulateKeysForSelectedTable();
+    PopulateLocalizationKeys();
 }
 
 // Handle Key Selection
 void SKeyViewerWidget::OnKeySelected(TSharedPtr<FString> NewValue, ESelectInfo::Type)
 {
     SelectedKey = NewValue;
+}
+void SKeyViewerWidget::OnKeyChanged(const FText& NewText)
+{
+    EnteredKey = NewText.ToString(); // Store the entered key
+}
+
+FReply SKeyViewerWidget::OnGetDataClicked()
+{
+    // Handle fetching data based on EnteredKey
+    return FReply::Handled();
 }

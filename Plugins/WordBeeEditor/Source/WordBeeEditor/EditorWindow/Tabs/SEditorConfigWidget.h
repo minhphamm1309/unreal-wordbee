@@ -13,6 +13,7 @@
 #include "Widgets/Views/STileView.h"
 #include "WordBeeEditor/Models/FDocumentInfo.h"
 #include "WordBeeEditor/Models/FEditorConfig.h"
+#include "WordBeeEditor/Models/WordbeeUserData.h"
 
 class SEditorConfigWidget : public SCompoundWidget
 {
@@ -23,10 +24,13 @@ public:
 	void Construct(const FArguments& InArgs);
 
 private:
+	FWordbeeUserData UserInfo;
 	FEditorConfig Config;
 	TArray<TSharedPtr<FString>> TargetSyncOptions;
 	TArray<TSharedPtr<FLanguageInfo>> MissingLocales;
 	TArray<TSharedPtr<FLanguageInfo>> CommonLocales;
+	TSharedPtr<SComboBox<TSharedPtr<FLanguageInfo>>> MissingLocalesCbo;
+	TSharedPtr<SListView<TSharedPtr<FLanguageInfo>>> CommonLocalesListView;
 	TSharedPtr<STileView<TSharedPtr<FLanguageInfo>>> LanguageTileView;
 	void OnAutoSyncChanged(ECheckBoxState NewState);
 	void OnSyncIntervalChanged(const FText& NewText, ETextCommit::Type CommitType);
@@ -38,4 +42,6 @@ private:
 	TSharedRef<SWidget>GenerateLanguageOption(TSharedPtr<FLanguageInfo> Item);
 	void OnLanguageCheckboxChanged(ECheckBoxState NewState);
 	TSharedRef<ITableRow> GenerateLanguageCheckbox(TSharedPtr<FLanguageInfo> Item, const TSharedRef<STableViewBase>& OwnerTable);
+	FReply OnReloadLanguagesClicked();
+	void FetchLangsFromAPI();
 };

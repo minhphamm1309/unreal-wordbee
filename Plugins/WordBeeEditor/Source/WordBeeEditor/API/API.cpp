@@ -183,17 +183,9 @@ void API::PullDocument(FWordbeeUserData userInfo, const FString& DocumentId, FOn
 	Request->SetHeader(TEXT("X-Auth-AccountId"), userInfo.AccountId);
 	Request->SetHeader(TEXT("X-Auth-Token"), userInfo.AuthToken);
 
-	TSharedPtr<FJsonObject> JsonObject = MakeShareable(new FJsonObject());
-
-	JsonObject->SetBoolField(TEXT("includeComments"), true);
-	JsonObject->SetBoolField(TEXT("includeCustomFields"), true);
-	JsonObject->SetBoolField(TEXT("copySourceToTarget"), false);
-	JsonObject->SetBoolField(TEXT("excludeTexts"), "none");
-
-	FString RequestBody;
-	TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&RequestBody);
-	FJsonSerializer::Serialize(JsonObject.ToSharedRef(), Writer);
-
+	// Directly set the JSON string
+	FString RequestBody = TEXT("{\"includeComments\":true,\"includeCustomFields\":true,\"copySourceToTarget\":false}");
+	
 	Request->SetContentAsString(RequestBody);
 
 	Request->OnProcessRequestComplete().BindLambda([=](FHttpRequestPtr Req, FHttpResponsePtr Res, bool bSuccess)

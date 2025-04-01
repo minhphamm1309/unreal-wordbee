@@ -16,6 +16,7 @@ public:
 	void Construct(const FArguments& InArgs);
 
 private:
+	FString EnteredKey;
 	TArray<TSharedPtr<FCustomField>> CustomFields;
 
 	void OnMinLengthChanged(const FText& NewText);
@@ -33,8 +34,11 @@ private:
 	TSharedPtr<SSearchableComboBox> KeyComboBox;
 
 	void PopulateStringTables();
-	void PopulateKeysForSelectedTable();
+	void PopulateLocalizationKeys();
 
 	void OnStringTableSelected(TSharedPtr<FString> NewValue, ESelectInfo::Type);
 	void OnKeySelected(TSharedPtr<FString> NewValue, ESelectInfo::Type);
+
+	void OnKeyChanged(const FText& NewText);
+	FReply OnGetDataClicked();
 };

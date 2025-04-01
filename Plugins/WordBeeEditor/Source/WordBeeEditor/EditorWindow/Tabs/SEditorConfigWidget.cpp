@@ -24,42 +24,6 @@ class ULocalizationSettings;
 void SEditorConfigWidget::Construct(const FArguments& InArgs)
 {
 	Config = SingletonUtil::GetFromIni<FEditorConfig>();
-	MissingLocales.Empty(); // Clear previous items
-	CommonLocales.Empty();
-	FWordbeeUserData userInfo = SingletonUtil::GetFromIni<FWordbeeUserData>();
-	API::FetchLanguages(userInfo, [this](const TArray<FLanguageInfo>& Languages)
-	{
-		// Get available cultures in Unreal's localization system, include derived cultures
-		TArray<FString> UnrealLocales;
-		UnrealLocales = FTextLocalizationManager::Get().GetLocalizedCultureNames(ELocalizationLoadFlags::Game);
-		// Log Unreal locales
-		UE_LOG(LogTemp, Log, TEXT("Unreal Locales (Total: %d):"), UnrealLocales.Num());
-		for (const FString& UnrealLocale : UnrealLocales)
-		{
-			TSharedPtr<FCulture> Culture = FInternationalization::Get().GetCulture(UnrealLocale);
-			FString DisplayName = Culture.IsValid() ? Culture->GetDisplayName() : UnrealLocale;
-			// Check if Unreal's locale is missing in the API response
-			bool bIsMissing = !Languages.ContainsByPredicate([&UnrealLocale](const FLanguageInfo& Lang)
-			{
-				return Lang.V == UnrealLocale;
-			});
-			if (bIsMissing)
-			{
-				FLanguageInfo NewLang;
-				NewLang.V = UnrealLocale;
-				NewLang.T = DisplayName;
-				MissingLocales.Add(MakeShared<FLanguageInfo>(NewLang));
-			}
-			else
-			{
-				// If the language exists, add it to CommonLocales
-				FLanguageInfo CommonLang;
-				CommonLang.V = UnrealLocale;
-				CommonLang.T = DisplayName;
-				CommonLocales.Add(MakeShared<FLanguageInfo>(CommonLang));
-			}
-		}
-	});
 	TargetSyncOptions = {
 		MakeShared<FString>(TEXT("IfAnyProblem")),
 		MakeShared<FString>(TEXT("IfAllProblem")),
@@ -195,15 +159,39 @@ void SEditorConfigWidget::Construct(const FArguments& InArgs)
 			.AutoHeight()
 			.Padding(5)
 			[
-				SNew(SComboBox<TSharedPtr<FLanguageInfo>>)
-				.OptionsSource(&MissingLocales)
-				.OnGenerateWidget(this, &SEditorConfigWidget::GenerateLanguageOption)
+				SNew(SHorizontalBox)
+
+				// Reload Button (Curved Arrow Icon)
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				.Padding(5, 0)
 				[
-					SNew(STextBlock)
-					                .Text(FText::FromString("Missing Languages")) // Default display text
-					                .Font(FAppStyle::Get().GetFontStyle("NormalFont"))
+					SNew(SButton)
+					             .ButtonStyle(FAppStyle::Get(), "HoverHintOnly") // Style for minimal appearance
+					             .OnClicked(this, &SEditorConfigWidget::OnReloadLanguagesClicked)
+					             .ToolTipText(FText::FromString("Reload Missing Languages"))
+					[
+						SNew(SImage)
+						.Image(FAppStyle::Get().GetBrush("Icons.Refresh"))
+					]
+				]
+
+				// Missing Languages Dropdown
+				+ SHorizontalBox::Slot()
+				.FillWidth(1.0f)
+				.Padding(5, 0)
+				[
+					SAssignNew(MissingLocalesCbo, SComboBox<TSharedPtr<FLanguageInfo>>)
+					.OptionsSource(&MissingLocales)
+					.OnGenerateWidget(this, &SEditorConfigWidget::GenerateLanguageOption)
+					[
+						SNew(STextBlock)
+						.Text(FText::FromString("Missing Languages"))
+						.Font(FAppStyle::Get().GetFontStyle("NormalFont"))
+					]
 				]
 			]
+
 			// Language Selection Label with Checkbox
 			+ SVerticalBox::Slot()
 			.AutoHeight()
@@ -239,7 +227,7 @@ void SEditorConfigWidget::Construct(const FArguments& InArgs)
 				.Orientation(Orient_Horizontal) // Set horizontal scrolling
 				+ SScrollBox::Slot()
 				[
-					SNew(SListView<TSharedPtr<FLanguageInfo>>)
+					SAssignNew(CommonLocalesListView, SListView<TSharedPtr<FLanguageInfo>>)
 					.ItemHeight(24)
 					.ListItemsSource(&CommonLocales)
 					.OnGenerateRow(this, &SEditorConfigWidget::GenerateLanguageCheckbox)
@@ -386,7 +374,6 @@ FReply SEditorConfigWidget::OnCPullButtonClicked()
 			SelectedLanguages.Add(Lang->V);
 		}
 	}
-	
 	FDocumentData document = SingletonUtil::GetFromIni<FDocumentData>();
 	TArray<FSegment> segments;
 	// convert all document.Records to TArray<FSegment>
@@ -417,7 +404,6 @@ FReply SEditorConfigWidget::OnCPullButtonClicked()
 	Info.bFireAndForget = false; // Set this to false so we can control the notification manually
 	Info.FadeOutDuration = 2.0f; // How long it takes to fade out when closing
 	Info.ExpireDuration = 0.0f;  // Don't automatically expire
-
 	NotificationPtr = FSlateNotificationManager::Get().AddNotification(Info);
 	if (NotificationPtr.IsValid())
 	{
@@ -425,7 +411,6 @@ FReply SEditorConfigWidget::OnCPullButtonClicked()
 		NotificationPtr->SetCompletionState(SNotificationItem::CS_Success); // Optionally, change the state to indicate success
 		NotificationPtr->ExpireAndFadeout(); 
 	}
-	
 	return FReply::Handled();
 }
 
@@ -454,4 +439,52 @@ void SEditorConfigWidget::OnLanguageCheckboxChanged(ECheckBoxState NewState)
 			Lang->IsSelected = false;
 		}
 	}
+}
+
+FReply SEditorConfigWidget::OnReloadLanguagesClicked()
+{
+	FetchLangsFromAPI();
+	return FReply::Handled();
+}
+
+void SEditorConfigWidget::FetchLangsFromAPI()
+{
+	MissingLocales.Empty(); 
+	CommonLocales.Empty();
+	UserInfo = SingletonUtil::GetFromIni<FWordbeeUserData>();
+	API::FetchLanguages(UserInfo, [this](const TArray<FLanguageInfo>& Languages)
+	{
+		// Get available cultures in Unreal's localization system, include derived cultures
+		TArray<FString> UnrealLocales;
+		UnrealLocales = FTextLocalizationManager::Get().GetLocalizedCultureNames(ELocalizationLoadFlags::Game);
+		// Log Unreal locales
+		UE_LOG(LogTemp, Log, TEXT("Unreal Locales (Total: %d):"), UnrealLocales.Num());
+		for (const FString& UnrealLocale : UnrealLocales)
+		{
+			TSharedPtr<FCulture> Culture = FInternationalization::Get().GetCulture(UnrealLocale);
+			FString DisplayName = Culture.IsValid() ? Culture->GetDisplayName() : UnrealLocale;
+			// Check if Unreal's locale is missing in the API response
+			bool bIsMissing = !Languages.ContainsByPredicate([&UnrealLocale](const FLanguageInfo& Lang)
+			{
+				return Lang.V == UnrealLocale;
+			});
+			if (bIsMissing)
+			{
+				FLanguageInfo NewLang;
+				NewLang.V = UnrealLocale;
+				NewLang.T = DisplayName;
+				MissingLocales.Add(MakeShared<FLanguageInfo>(NewLang));
+			}
+			else
+			{
+				// If the language exists, add it to CommonLocales
+				FLanguageInfo CommonLang;
+				CommonLang.V = UnrealLocale;
+				CommonLang.T = DisplayName;
+				CommonLocales.Add(MakeShared<FLanguageInfo>(CommonLang));
+			}
+		}
+		CommonLocalesListView->RequestListRefresh();
+		MissingLocalesCbo->RefreshOptions();
+	});
 }

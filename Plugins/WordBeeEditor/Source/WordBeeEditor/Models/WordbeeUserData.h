@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "WordBeeEditor/Utils/ELanguage.h"
+#include "WordBeeEditor/Utils/SingletonUtil.h"
 #include "WordbeeUserData.generated.h"
 
 USTRUCT(Blueprintable)
@@ -30,3 +31,5 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="UserData")
 	int32 DocumentId;
 };
+
+

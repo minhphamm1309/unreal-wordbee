@@ -3,6 +3,7 @@
 #include "WordBeeEditor/Command/CreateDataAsset/CreateConfigDataAssetCommand.h"
 #include "WordBeeEditor/Command/CreateDataAsset/CreateUserDataAssetCommand.h"
 #include "WordBeeEditor/EditorWindow/SKeyViewerWidget.h"
+#include "WordBeeEditor/EditorWindow/SWorkFlowStatus.h"
 
 void FWordBeeEditorModule::StartupModule()
 {
@@ -11,6 +12,9 @@ void FWordBeeEditorModule::StartupModule()
 				.SetMenuType(ETabSpawnerMenuType::Hidden);
 	FGlobalTabmanager::Get()->RegisterNomadTabSpawner(WordBeeKeyViewerTabName, FOnSpawnTab::CreateRaw(this, &FWordBeeEditorModule::OnSpawnKeyViewerTab))
 				.SetDisplayName(FText::FromString("Wordbee Key Viewer"))
+				.SetMenuType(ETabSpawnerMenuType::Hidden);
+	FGlobalTabmanager::Get()->RegisterNomadTabSpawner(WorkFlowStatusTabName, FOnSpawnTab::CreateRaw(this, &FWordBeeEditorModule::OnSpawnWorkFlowStatusTab))
+				.SetDisplayName(FText::FromString("Workflow Status Window"))
 				.SetMenuType(ETabSpawnerMenuType::Hidden);
 
 	// Optionally, add a menu entry
@@ -39,6 +43,14 @@ TSharedRef<SDockTab> FWordBeeEditorModule::OnSpawnKeyViewerTab(const FSpawnTabAr
 			.TabRole(ETabRole::NomadTab)
 			[
 				SNew(SKeyViewerWidget)
+			];
+}
+TSharedRef<SDockTab> FWordBeeEditorModule::OnSpawnWorkFlowStatusTab(const FSpawnTabArgs& SpawnTabArgs)
+{
+	return SNew(SDockTab)
+			.TabRole(ETabRole::NomadTab)
+			[
+				SNew(SWorkFlowStatus)
 			];
 }
 
@@ -78,6 +90,13 @@ void FWordBeeEditorModule::RegisterMenus()
 				FSlateIcon(),
 				FUIAction(FExecuteAction::CreateRaw(this, &FWordBeeEditorModule::OnKeyViewerClicked))
 			);
+			SubMenuSection.AddMenuEntry(
+				"WorkFlowStatusTab",
+				FText::FromString("Workflow status"),
+				FText::FromString("Open to view workflow status"),
+				FSlateIcon(),
+				FUIAction(FExecuteAction::CreateRaw(this, &FWordBeeEditorModule::OnWorkFlowStatusClick))
+			);
 		})
 	);
 }
@@ -91,4 +110,8 @@ void FWordBeeEditorModule::OnMenuButtonClicked()
 void FWordBeeEditorModule::OnKeyViewerClicked()
 {
 	FGlobalTabmanager::Get()->TryInvokeTab(WordBeeKeyViewerTabName);
+}
+void FWordBeeEditorModule::OnWorkFlowStatusClick()
+{
+	FGlobalTabmanager::Get()->TryInvokeTab(WorkFlowStatusTabName);
 }

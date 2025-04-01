@@ -8,11 +8,11 @@
 				{
 					"Source":
 					{
-						"Text": "Username english "
+						"Text": "test select lang 5 "
 					},
 					"Translation":
 					{
-						"Text": "Username catalan "
+						"Text": "test select lang 5 "
 					},
 					"Key": "WB_LABEL_USERNAME"
 				},
@@ -23,18 +23,18 @@
 					},
 					"Translation":
 					{
-						"Text": "Password ca"
+						"Text": "SIFRA catalana 21734657"
 					},
 					"Key": "WB_LABEL_PASSWORD"
 				},
 				{
 					"Source":
 					{
-						"Text": "Change Language"
+						"Text": "Change Language UPDA"
 					},
 					"Translation":
 					{
-						"Text": "Canvia l'idioma"
+						"Text": "Canvia l'idioma MATT"
 					},
 					"Key": "WB_LABEL_CHANGLANGUAGE"
 				},
@@ -45,7 +45,7 @@
 					},
 					"Translation":
 					{
-						"Text": "login cata"
+						"Text": "login cata 1"
 					},
 					"Key": "WB_BUTTON_LOGIN"
 				},
@@ -56,7 +56,7 @@
 					},
 					"Translation":
 					{
-						"Text": "Change Language ca"
+						"Text": "CHG LING 123 AUTO SYNC TEST AND EXTRA WORDS"
 					},
 					"Key": "WB_LABEL_CHANGELANGUAGE"
 				},
@@ -67,7 +67,7 @@
 					},
 					"Translation":
 					{
-						"Text": "TEST ENUK"
+						"Text": "TEST ENUK BERRY MORE MORE MORE"
 					},
 					"Key": "WB_TEST"
 				},
@@ -246,6 +246,28 @@
 						"Text": "COLLECT RARE ARTIFACTS AND LEGENDARY WEAPONS TO ENHANCE YOUR STRENGTH AND BECOME A TRUE CHAMPION OF THE REALM."
 					},
 					"Key": "6"
+				},
+				{
+					"Source":
+					{
+						"Text": "Username english "
+					},
+					"Translation":
+					{
+						"Text": "test select lang "
+					},
+					"Key": "WB_LABEL_USERNAME_CHANGE"
+				},
+				{
+					"Source":
+					{
+						"Text": "Username english "
+					},
+					"Translation":
+					{
+						"Text": "test select lang "
+					},
+					"Key": "WB_LABEL_USERNAME_MATTBERRY"
 				}
 			]
 		}

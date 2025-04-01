@@ -69,6 +69,7 @@ void SEditorConfigWidget::Construct(const FArguments& InArgs)
 				+ SHorizontalBox::Slot()
 				.AutoWidth()
 				.Padding(5, 0) // Reduce padding to keep them closer
+				.VAlign(VAlign_Center)
 				[
 					SNew(STextBlock)
 					.Text(FText::FromString("Sync Interval (seconds):"))
@@ -166,7 +167,13 @@ void SEditorConfigWidget::Construct(const FArguments& InArgs)
 					SNew(SButton)
 					             .ButtonStyle(FAppStyle::Get(), "HoverHintOnly") // Style for minimal appearance
 					             .OnClicked(this, &SEditorConfigWidget::OnReloadLanguagesClicked)
-					             .ToolTipText(FText::FromString("Reload Missing Languages"))
+					             .ToolTipText(FText::FromString("Reload Missing and Common Languages"))
+					             .IsEnabled_Lambda([this]() { return !bIsFetching; }) // Disable when fetching
+					             .Cursor(EMouseCursor::Hand) // Change cursor on hover
+								[
+									SNew(SImage)
+									.Image(FAppStyle::Get().GetBrush("Icons.Refresh"))
+								]
 					[
 						SNew(SImage)
 						.Image(FAppStyle::Get().GetBrush("Icons.Refresh"))
@@ -210,7 +217,7 @@ void SEditorConfigWidget::Construct(const FArguments& InArgs)
 				.Padding(5)
 				[
 					SNew(SCheckBox)
-					
+					.IsChecked_Lambda([this]() { return bAllLangsChecked ? ECheckBoxState::Checked : ECheckBoxState::Unchecked; }) 
 					.OnCheckStateChanged(this, &SEditorConfigWidget::OnLanguageCheckboxChanged)
 				]
 			]
@@ -251,7 +258,7 @@ void SEditorConfigWidget::Construct(const FArguments& InArgs)
 				             .Text(FText::FromString("Pull Data"))
 				             .HAlign(HAlign_Center) // Center horizontally
 				             .VAlign(VAlign_Center)
-				.OnClicked(this, &SEditorConfigWidget::OnCPullButtonClicked)
+				             .OnClicked(this, &SEditorConfigWidget::OnCPullButtonClicked)
 			]
 
 			// Push Data Region Label
@@ -392,13 +399,14 @@ FReply SEditorConfigWidget::OnCPullButtonClicked()
 	FNotificationInfo Info(FText::FromString("Pull Data completed!"));
 	Info.bFireAndForget = false; // Set this to false so we can control the notification manually
 	Info.FadeOutDuration = 2.0f; // How long it takes to fade out when closing
-	Info.ExpireDuration = 0.0f;  // Don't automatically expire
+	Info.ExpireDuration = 0.0f; // Don't automatically expire
 	NotificationPtr = FSlateNotificationManager::Get().AddNotification(Info);
 	if (NotificationPtr.IsValid())
 	{
 		NotificationPtr->SetCompletionState(SNotificationItem::CS_Pending);
-		NotificationPtr->SetCompletionState(SNotificationItem::CS_Success); // Optionally, change the state to indicate success
-		NotificationPtr->ExpireAndFadeout(); 
+		NotificationPtr->SetCompletionState(SNotificationItem::CS_Success);
+		// Optionally, change the state to indicate success
+		NotificationPtr->ExpireAndFadeout();
 	}
 	return FReply::Handled();
 }
@@ -407,6 +415,7 @@ void SEditorConfigWidget::OnLanguageCheckboxChanged(ECheckBoxState NewState)
 {
 	if (NewState == ECheckBoxState::Checked)
 	{
+		bAllLangsChecked = true;
 		// Set all CommonLocales' IsSelected to true
 		for (const TSharedPtr<FLanguageInfo>& Lang : CommonLocales)
 		{
@@ -415,6 +424,7 @@ void SEditorConfigWidget::OnLanguageCheckboxChanged(ECheckBoxState NewState)
 	}
 	else
 	{
+		bAllLangsChecked = false;
 		// Set all CommonLocales' IsSelected to false
 		for (const TSharedPtr<FLanguageInfo>& Lang : CommonLocales)
 		{
@@ -425,17 +435,24 @@ void SEditorConfigWidget::OnLanguageCheckboxChanged(ECheckBoxState NewState)
 
 FReply SEditorConfigWidget::OnReloadLanguagesClicked()
 {
+	if (bIsFetching)
+	{
+		return FReply::Handled();
+	}
+	bIsFetching = true; // Start fetching, disable the button
 	FetchLangsFromAPI();
 	return FReply::Handled();
 }
 
 void SEditorConfigWidget::FetchLangsFromAPI()
 {
-	MissingLocales.Empty(); 
+	bAllLangsChecked = false;
+	MissingLocales.Empty();
 	CommonLocales.Empty();
 	UserInfo = SingletonUtil::GetFromIni<FWordbeeUserData>();
 	API::FetchLanguages(UserInfo, [this](const TArray<FLanguageInfo>& Languages)
 	{
+		bIsFetching = false;
 		// Get available cultures in Unreal's localization system, include derived cultures
 		TArray<FString> UnrealLocales;
 		UnrealLocales = FTextLocalizationManager::Get().GetLocalizedCultureNames(ELocalizationLoadFlags::Game);
@@ -468,5 +485,19 @@ void SEditorConfigWidget::FetchLangsFromAPI()
 		}
 		CommonLocalesListView->RequestListRefresh();
 		MissingLocalesCbo->RefreshOptions();
-	});
+		ShowNotification("Languages reloaded successfully!", true);
+	}, [this](const FString& ErrorMessage)
+		{
+			bIsFetching = false; 
+			ShowNotification("Failed to reload languages: " + ErrorMessage, false);
+		});
+}
+
+void SEditorConfigWidget::ShowNotification(const FString& Message, bool bSuccess)
+{
+	FNotificationInfo Info(FText::FromString(Message));
+	Info.ExpireDuration = 3.0f;
+	Info.bUseSuccessFailIcons = true;
+	Info.Image = bSuccess ? FAppStyle::Get().GetBrush("Icons.Success") : FAppStyle::Get().GetBrush("Icons.Error");
+	FSlateNotificationManager::Get().AddNotification(Info);
 }

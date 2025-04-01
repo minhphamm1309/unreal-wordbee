@@ -20,6 +20,7 @@ const FString API::ROUTER_POLL = "api/trm/status?requestid={0}";
 const FString API::ROUTER_DownloadDocument = "api/media/get/{0}";
 const FString API::ROUTER_DOCUMENT_POOLING = "api/trm/status?requestid={0}";
 const FString API::ROUTER_PROJECT_LOCALES = "api/projects/{0}/locales";
+const FString API::ROUTER_WORKFLOW = "api/apps/wbflex/documents/{0}/workflow/status";
 void API::Authenticate(FString AccountId, FString ApiKey, FString BaseUrl, FOnAuthCompleted callback)
 {
 	FString URL = ConstructUrl(AccountId, BaseUrl, ROUTER_AUTH);
@@ -286,35 +287,141 @@ void API::DownloadFile(FWordbeeUserData userInfo, const FString& FileToken, FOnP
 	});
 	Request->ProcessRequest();
 }
-void API::FetchLanguages(FWordbeeUserData userInfo, TFunction<void(const TArray<FLanguageInfo>&)> OnSuccess)
+void API::FetchLanguages(FWordbeeUserData userInfo, 
+                         TFunction<void(const TArray<FLanguageInfo>&)> OnSuccess, 
+                         TFunction<void(const FString&)> OnError, 
+                         bool IsRetry)
 {
+	if (userInfo.AccountId.IsEmpty() || userInfo.AuthToken.IsEmpty())
+	{
+		UE_LOG(LogTemp, Error, TEXT("Invalid user data. Cannot fetch languages."));
+		if (OnError) OnError(TEXT("Invalid user data"));
+		return;
+	}
+
+	FString Url = ConstructUrl(userInfo.AccountId, userInfo.Url, FString::Format(*ROUTER_PROJECT_LOCALES, { userInfo.ProjectId }));
+	UE_LOG(LogTemp, Log, TEXT("Fetching languages with user info: %s"), *Url);
+
 	TSharedRef<IHttpRequest, ESPMode::ThreadSafe> Request = FHttpModule::Get().CreateRequest();
-	FString url = ConstructUrl(userInfo.AccountId, userInfo.Url, FString::Format(*ROUTER_PROJECT_LOCALES, {userInfo.ProjectId}));
-	Request->SetURL(url);
-	UE_LOG(LogTemp, Log, TEXT("Fetching languages with user info: %s"), *url);
+	Request->SetURL(Url);
 	Request->SetVerb(TEXT("GET"));
 	Request->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
 	Request->SetHeader(APIConstant::AuthToken, userInfo.AuthToken);
 	Request->SetHeader(APIConstant::AuthAccountID, userInfo.AccountId);
-	Request->OnProcessRequestComplete().BindLambda([OnSuccess](FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful)
-	{
-		if (bWasSuccessful && Response.IsValid() && Response->GetResponseCode() == 200)
+
+	Request->OnProcessRequestComplete().BindLambda(
+		[userInfo, OnSuccess, OnError, IsRetry](FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful)
 		{
-			TArray<FLanguageInfo> LanguageList;
-			FString ResponseString = Response->GetContentAsString();
-			if (FJsonObjectConverter::JsonArrayStringToUStruct(ResponseString, &LanguageList, 0, CPF_Transient))
+			FString RawBody = Response.IsValid() ? Response->GetContentAsString() : TEXT("Request failed");
+			int32 ResponseCode = Response.IsValid() ? Response->GetResponseCode() : -1;
+			UE_LOG(LogTemp, Warning, TEXT("rawBody: %s"), *RawBody);
+
+			if (!bWasSuccessful || !Response.IsValid())
 			{
-				OnSuccess(LanguageList);
+				UE_LOG(LogTemp, Error, TEXT("Request failed: %s (Code: %d)"), *RawBody, ResponseCode);
+				if (OnError) OnError(FString::Printf(TEXT("Request failed with code %d"), ResponseCode));
+				return;
+			}
+
+			if (ResponseCode == 401 && !IsRetry)
+			{
+				API::Authenticate(userInfo.AccountId, userInfo.ApiKey, userInfo.Url,
+					FOnAuthCompleted::CreateLambda([userInfo, OnSuccess, OnError](FString NewToken) mutable
+					{
+						// Update userInfo with new token and retry request
+						userInfo.AuthToken = NewToken;
+						UE_LOG(LogTemp, Log, TEXT("Authentication successful, retrying language fetch..."));
+						API::FetchLanguages(userInfo, OnSuccess, OnError, true);
+					})
+				);
+				return;
+			}
+
+			if (ResponseCode == 200)
+			{
+				TArray<FLanguageInfo> LanguageList;
+				if (FJsonObjectConverter::JsonArrayStringToUStruct(RawBody, &LanguageList, 0, CPF_Transient))
+				{
+					OnSuccess(LanguageList);
+				}
+				else
+				{
+					UE_LOG(LogTemp, Error, TEXT("Failed to parse JSON into FLanguageInfo array"));
+					if (OnError) OnError(TEXT("Failed to parse JSON response"));
+				}
 			}
 			else
 			{
-				UE_LOG(LogTemp, Error, TEXT("Failed to parse JSON into FLanguageInfo array"));
+				UE_LOG(LogTemp, Error, TEXT("Failed to fetch languages! Response Code: %d"), ResponseCode);
+				if (OnError) OnError(FString::Printf(TEXT("Failed to fetch languages, response code %d"), ResponseCode));
 			}
-		}
-		else
-		{
-			UE_LOG(LogTemp, Error, TEXT("Failed to fetch languages! Response Code: %d"), Response.IsValid() ? Response->GetResponseCode() : -1);
-		}
-	});
+		});
+
 	Request->ProcessRequest();
 }
+
+void API::FetchWorkflow(FWordbeeUserData userInfo, const FString& DocumentId,
+                        TFunction<void(const TArray<FWorkflowStatus>&)> onSuccess,
+                        TFunction<void(const FString&)> onError, bool IsRetry)
+{
+	if (userInfo.AccountId.IsEmpty() || userInfo.AuthToken.IsEmpty())
+	{
+		UE_LOG(LogTemp, Error, TEXT("Invalid user data. Cannot fetch workflow."));
+		onError(TEXT("Invalid user data"));
+		return;
+	}
+	FString Url = ConstructUrl(userInfo.AccountId, userInfo.Url, FString::Format(*ROUTER_WORKFLOW, { userInfo.DocumentId }));
+	TSharedRef<IHttpRequest, ESPMode::ThreadSafe> Request = FHttpModule::Get().CreateRequest();
+	Request->SetURL(Url);
+	Request->SetVerb(TEXT("GET"));
+	Request->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
+	Request->SetHeader(APIConstant::AuthToken, userInfo.AuthToken);
+	Request->SetHeader(APIConstant::AuthAccountID, userInfo.AccountId);
+
+	Request->OnProcessRequestComplete().BindLambda(
+		[userInfo, DocumentId, onSuccess, onError, IsRetry](FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful)
+		{
+			FString RawBody = Response.IsValid() ? Response->GetContentAsString() : TEXT("Request failed");
+			int32 ResponseCode = Response.IsValid() ? Response->GetResponseCode() : -1;
+			UE_LOG(LogTemp, Warning, TEXT("Response: %s"), *RawBody);
+
+			if (!bWasSuccessful || !Response.IsValid())
+			{
+				UE_LOG(LogTemp, Error, TEXT("Request failed: %s (Code: %d)"), *RawBody, ResponseCode);
+				onError(FString::Printf(TEXT("Request failed: %s (Code: %d)"), *RawBody, ResponseCode));
+				return;
+			}
+
+			// Handle authentication failure and retry if necessary
+			if (ResponseCode == 401 && !IsRetry)
+			{
+				API::Authenticate(userInfo.AccountId, userInfo.ApiKey, userInfo.Url,
+					FOnAuthCompleted::CreateLambda([userInfo, DocumentId, onSuccess, onError](FString NewToken) mutable
+					{
+						// Update userInfo with new token and retry request
+						userInfo.AuthToken = NewToken;
+						UE_LOG(LogTemp, Log, TEXT("Authentication successful, retrying workflow fetch..."));
+						API::FetchWorkflow(userInfo, DocumentId, onSuccess, onError, true);
+					})
+				);
+				return;
+			}
+
+			// Deserialize JSON into an array of workflow statuses
+			TArray<FWorkflowStatus> ParsedWorkflows;
+			if (!FJsonObjectConverter::JsonArrayStringToUStruct<FWorkflowStatus>(RawBody, &ParsedWorkflows, 0, 0))
+			{
+				UE_LOG(LogTemp, Error, TEXT("Failed to parse response"));
+				onError(TEXT("Failed to parse response"));
+				return;
+			}
+
+			// Call success callback with the parsed data
+			onSuccess(ParsedWorkflows);
+		});
+
+	Request->ProcessRequest();
+}
+
+
+

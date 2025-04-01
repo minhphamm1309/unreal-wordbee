@@ -8,7 +8,7 @@
 				{
 					"Source":
 					{
-						"Text": "Username english "
+						"Text": "test select lang 4 "
 					},
 					"Translation":
 					{
@@ -30,7 +30,7 @@
 				{
 					"Source":
 					{
-						"Text": "Change Language"
+						"Text": "Change Language UPDA"
 					},
 					"Translation":
 					{
@@ -246,6 +246,28 @@
 						"Text": "COLLECT RARE ARTIFACTS AND LEGENDARY WEAPONS TO ENHANCE YOUR STRENGTH AND BECOME A TRUE CHAMPION OF THE REALM."
 					},
 					"Key": "6"
+				},
+				{
+					"Source":
+					{
+						"Text": "Username english "
+					},
+					"Translation":
+					{
+						"Text": "Nom d'utilisateur "
+					},
+					"Key": "WB_LABEL_USERNAME_CHANGE"
+				},
+				{
+					"Source":
+					{
+						"Text": "Username english "
+					},
+					"Translation":
+					{
+						"Text": "USERNAME ENGLISH "
+					},
+					"Key": "WB_LABEL_USERNAME_MATTBERRY"
 				}
 			]
 		}

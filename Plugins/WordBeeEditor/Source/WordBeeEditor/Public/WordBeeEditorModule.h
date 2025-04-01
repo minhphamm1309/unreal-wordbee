@@ -9,6 +9,7 @@
 
 static const FName WordBeeConfigEditorTabName("WordBeeConfigEditorTab");
 static const FName WordBeeKeyViewerTabName("WordBeeKeyViewerTab");
+static const FName WorkFlowStatusTabName("WorkFlowStatusTab");
 /**
  * This is the module definition for the editor mode. You can implement custom functionality
  * as your plugin module starts up and shuts down. See IModuleInterface for more extensibility options.
@@ -22,10 +23,12 @@ public:
 
 	TSharedRef<SDockTab> OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs);
 	TSharedRef<SDockTab> OnSpawnKeyViewerTab(const FSpawnTabArgs& SpawnTabArgs);
+	TSharedRef<SDockTab> OnSpawnWorkFlowStatusTab(const FSpawnTabArgs& SpawnTabArgs);
 	void RegisterMenus();
 
 	void OnMenuButtonClicked();
 	void OnKeyViewerClicked();
+	void OnWorkFlowStatusClick();
 };
 
 IMPLEMENT_MODULE(FWordBeeEditorModule, MyEditor)

@@ -24,6 +24,7 @@ public:
 	void Construct(const FArguments& InArgs);
 
 private:
+	bool bIsFetching = false;
 	FWordbeeUserData UserInfo;
 	FEditorConfig Config;
 	TArray<TSharedPtr<FString>> TargetSyncOptions;
@@ -46,4 +47,6 @@ private:
 	TSharedPtr<SNotificationItem> NotificationPtr;
 	FReply OnReloadLanguagesClicked();
 	void FetchLangsFromAPI();
+	void ShowNotification(const FString& Message, bool bSuccess);
+	bool bAllLangsChecked = false;
 };

@@ -161,3 +161,23 @@ struct FWordbeeDocument
     UPROPERTY(BlueprintReadWrite)
     TArray<FSegment> Segments;
 };
+
+USTRUCT(BlueprintType)
+struct FWorkflowStatus
+{
+    GENERATED_BODY()
+
+public:
+    UPROPERTY(BlueprintReadWrite, Category = "Workflow")
+    FString Loc;
+
+    UPROPERTY(BlueprintReadWrite, Category = "Workflow")
+    FString Loct;
+
+    UPROPERTY(BlueprintReadWrite, Category = "Workflow")
+    int32 Status;
+
+    UPROPERTY(BlueprintReadWrite, Category = "Workflow")
+    FString Statust;
+};
+

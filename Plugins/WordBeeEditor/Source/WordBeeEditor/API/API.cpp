@@ -1,5 +1,7 @@
 #include "API.h"
 
+#include <__ranges/elements_view.h>
+
 #include "HttpModule.h"
 #include "Interfaces/IHttpRequest.h"
 #include "Interfaces/IHttpResponse.h"
@@ -163,7 +165,7 @@ void API::FetchDocumentById(FWordbeeUserData userInfo, const FString& DocumentId
 	Request->ProcessRequest();
 }
 
-void API::PullDocument(FWordbeeUserData userInfo, const FString& DocumentId, FOnPullDocumentComplete callback)
+void API::PullDocument(FWordbeeUserData userInfo, const FString& DocumentId, FOnPullDocumentComplete callback, const TArray<FString>& Keys)
 {
 	TSharedRef<IHttpRequest, ESPMode::ThreadSafe> Request = FHttpModule::Get().CreateRequest();
 	FString url = ConstructUrl(userInfo.AccountId, userInfo.Url,
@@ -175,8 +177,27 @@ void API::PullDocument(FWordbeeUserData userInfo, const FString& DocumentId, FOn
 	Request->SetHeader(TEXT("X-Auth-AccountId"), userInfo.AccountId);
 	Request->SetHeader(TEXT("X-Auth-Token"), userInfo.AuthToken);
 
-	// Directly set the JSON string
-	FString RequestBody = TEXT("{\"includeComments\":true,\"includeCustomFields\":true,\"copySourceToTarget\":false}");
+	// Create JSON body
+	TSharedPtr<FJsonObject> RequestJson = MakeShareable(new FJsonObject());
+	RequestJson->SetBoolField("includeComments", true);
+	RequestJson->SetBoolField("includeCustomFields", true);
+	RequestJson->SetBoolField("copySourceToTarget", false);
+
+	// Convert the Keys array to a JSON array
+	if (Keys.Num() > 0)
+	{
+		TArray<TSharedPtr<FJsonValue>> JsonKeys;
+		for (const FString& Key : Keys)
+		{
+			JsonKeys.Add(MakeShareable(new FJsonValueString(Key)));
+		}
+		RequestJson->SetArrayField("keys", JsonKeys);	
+	}
+	// Serialize JSON object to string
+	FString RequestBody;
+	TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&RequestBody);
+	FJsonSerializer::Serialize(RequestJson.ToSharedRef(), Writer);
+
 	Request->SetContentAsString(RequestBody);
 
 	Request->OnProcessRequestComplete().BindLambda([=](FHttpRequestPtr Req, FHttpResponsePtr Res, bool bSuccess)

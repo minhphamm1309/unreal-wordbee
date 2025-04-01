@@ -12,7 +12,7 @@ struct FCustomField
 	FString Id;
 
 	UPROPERTY(BlueprintReadWrite)
-	FString Title;
+	FString T;
 	
 	UPROPERTY(BlueprintReadWrite)
 	FString V;

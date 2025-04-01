@@ -31,5 +31,8 @@ struct FSegment
 	int32 chmax;
 
 	UPROPERTY(BlueprintReadWrite)
+	TArray<FCustomField> Cfs;
+	
+	UPROPERTY(BlueprintReadWrite)
 	TMap<FString, FSegmentText> texts;
 };

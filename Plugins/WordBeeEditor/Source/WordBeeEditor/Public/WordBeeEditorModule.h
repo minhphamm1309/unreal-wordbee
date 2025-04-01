@@ -35,7 +35,8 @@ public:
 
 	void OnMenuButtonClicked();
 	void OnKeyViewerClicked();
-	void UpdateDocumentData(const FDocumentData& Document, const FString& Key, const FString& langCode, const FString& Text, TArray<FRecord> Array);
+	void UpdateRecord(const FRecord& Record);
+	void UpdateDocumentData(const FDocumentData& Document, const FString& Key, const FString& langCode, const FString& Text);
 	void SyncLocalizationFileChanged(const FString& filePath);
 	FDelegateHandle WatcherHandle;
 

@@ -15,6 +15,7 @@
 #include "WordBeeEditor/Command/StoredLocalize/StoredLocailzationCommand.h"
 #include "WordBeeEditor/Models/FDocumentData.h"
 #include "WordBeeEditor/Models/FRecord.h"
+#include "WordBeeEditor/Utils/LocalizeUtil.h"
 #include "WordBeeEditor/Utils/SingletonUtil.h"
 
 struct FLocalizationTargetSettings;
@@ -277,6 +278,7 @@ void SEditorConfigWidget::Construct(const FArguments& InArgs)
 				             .Text(FText::FromString("Push Data"))
 				             .HAlign(HAlign_Center) // Center horizontally
 				             .VAlign(VAlign_Center)
+				.OnClicked(this, &SEditorConfigWidget::OnPushButtonClicked)
 			]
 		]
 	];
@@ -416,7 +418,28 @@ FReply SEditorConfigWidget::OnCPullButtonClicked()
 
 FReply SEditorConfigWidget::OnPushButtonClicked()
 {
+	LocalizeUtil * localizeUtil = Locate<LocalizeUtil>::Get();
 
+	API::PushRecords(localizeUtil->RecordsChanged, FOnUpdateDocumentComplete::CreateLambda([](bool bSuccess, const int32& RequestId)
+	{
+		if (bSuccess)
+		{
+			FNotificationInfo Info(FText::FromString("Push data to Wordbee completed successfully."));
+			Info.bFireAndForget = true; // Set this to true so it automatically fades out
+			Info.ExpireDuration = 2.0f;  // How long it takes to fade out when closing
+
+			TSharedPtr<SNotificationItem> NotificationPtr = FSlateNotificationManager::Get().AddNotification(Info);
+			if (NotificationPtr.IsValid())
+			{
+				NotificationPtr->SetCompletionState(SNotificationItem::CS_Success);
+				NotificationPtr->ExpireAndFadeout();
+			}
+		}
+		else
+		{
+			FMessageDialog::Open(EAppMsgType::Ok, FText::FromString("Failed to push data to Wordbee."));
+		}
+	}));
 	
 	return FReply::Handled();
 }

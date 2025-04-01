@@ -9,6 +9,8 @@
 #include "WordBeeEditor/Models/FDocumentData.h"
 #include "WordBeeEditor/Models/WordbeeResponse.h"
 #include "WordBeeEditor/Models/WordbeeUserData.h"
+#include "WordBeeEditor/Utils/APIConstant.h"
+#include "WordBeeEditor/Utils/LocalizeUtil.h"
 #include "WordBeeEditor/Utils/SingletonUtil.h"
 
 
@@ -20,10 +22,11 @@ void FWordBeeEditorModule::StartupModule()
 	FGlobalTabmanager::Get()->RegisterNomadTabSpawner(WordBeeKeyViewerTabName, FOnSpawnTab::CreateRaw(this, &FWordBeeEditorModule::OnSpawnKeyViewerTab))
 				.SetDisplayName(FText::FromString("Wordbee Key Viewer"))
 				.SetMenuType(ETabSpawnerMenuType::Hidden);
-
+	
 	// Optionally, add a menu entry
 	UToolMenus::RegisterStartupCallback(FSimpleMulticastDelegate::FDelegate::CreateRaw(this, &FWordBeeEditorModule::RegisterMenus));
 
+	Locate<LocalizeUtil>::Set(new LocalizeUtil());
 	StartWatcherLocalization();
 	UE_LOG(LogTemp, Log, TEXT("WordBeeEditor: Successfully started up module!"));
 }
@@ -84,6 +87,7 @@ void FWordBeeEditorModule::StopWatcherLocalization()
 void FWordBeeEditorModule::ShutdownModule()
 {
 	StopWatcherLocalization();
+	Locate<LocalizeUtil>::Clear();
 	FGlobalTabmanager::Get()->UnregisterNomadTabSpawner(WordBeeConfigEditorTabName);
 }
 
@@ -155,25 +159,44 @@ void FWordBeeEditorModule::OnKeyViewerClicked()
 	FGlobalTabmanager::Get()->TryInvokeTab(WordBeeKeyViewerTabName);
 }
 
-void FWordBeeEditorModule::UpdateDocumentData(const FDocumentData& Document, const FString& Key,const FString& langCode, const FString& Text,
-	TArray<FRecord> Array)
+void FWordBeeEditorModule::UpdateRecord(const FRecord& Record)
 {
-	for (auto record : Document.records)
+	LocalizeUtil * localizeUtil = Locate<LocalizeUtil>::Get();
+
+	// Update the record in the localizeUtil->RecordsChanged
+	for (int i = 0; i < localizeUtil->RecordsChanged.Num(); i++)
+	{
+		if (localizeUtil->RecordsChanged[i].recordID.Equals(Record.recordID))
+		{
+			localizeUtil->RecordsChanged[i] = Record;
+			return;
+		}
+	}
+	localizeUtil->RecordsChanged.Add(Record);
+}
+
+void FWordBeeEditorModule::UpdateDocumentData(const FDocumentData& Document, const FString& Key,const FString& langCode, const FString& Text)
+{
+	FRecord Record;
+	for (const FRecord& record : Document.records)
 	{
 		if (record.recordID.Equals(Key))
 		{
-			for (auto Column : record.columns)
-			{
-				if (Column.columnID.Equals(langCode))
-				{
-					Column.text = Text;
-					Array.Add(record);
-					break;
-				}
-			}
+			Record = record;
+			
 			break;
 		}
 	}
+	for (FColumn& column : Record.columns)
+	{
+		if (column.columnID.Equals(langCode))
+		{
+			column.text = Text;
+			break;
+		}
+	}
+	// Update the record in the localizeUtil->RecordsChanged
+	UpdateRecord(Record);
 }
 
 void FWordBeeEditorModule::SyncLocalizationFileChanged(const FString& fileChanged)
@@ -187,7 +210,7 @@ void FWordBeeEditorModule::SyncLocalizationFileChanged(const FString& fileChange
 	FLocalizationData fileLoc = ParseLocalizationData(LocDir);
 
 	FDocumentData document = SingletonUtil::GetFromIni<FDocumentData>();
-	TArray<FRecord> Records;
+	
 	for (const FSubnamespace& SubnamespaceIni : fileIni.Subnamespaces)
 	{
 		for (const FSubnamespace& SubnamespaceLoc : fileLoc.Subnamespaces)
@@ -202,13 +225,14 @@ void FWordBeeEditorModule::SyncLocalizationFileChanged(const FString& fileChange
 						{
 							UE_LOG(LogTemp, Warning, TEXT("Key: %s - Old Translation: %s - New Translation: %s"),
 								*EntryIni.Key, *EntryIni.Translation.Text, *EntryLoc.Translation.Text);
-							UpdateDocumentData(document, EntryIni.Key, langCode, EntryLoc.Translation.Text, Records);
+							UpdateDocumentData(document, EntryIni.Key, langCode, EntryLoc.Translation.Text);
 						}
 					}
 				}
 			}
 		}
 	}
+
 	
 }
 

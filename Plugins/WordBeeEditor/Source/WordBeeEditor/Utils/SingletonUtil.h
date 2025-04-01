@@ -92,3 +92,26 @@ public:
         ConfigFile.Write(CustomIniPath);
     }
 };
+
+template <typename T>
+class Locate {
+private:
+    static std::unique_ptr<T> instance;  
+
+public:
+    static T* Get() {
+        return instance.get();
+    }
+
+    static void Set(T* newInstance) {
+        instance.reset(newInstance); 
+    }
+
+    // Xóa instance
+    static void Clear() {
+        instance.reset();
+    }
+};
+
+template <typename T>
+std::unique_ptr<T> Locate<T>::instance;

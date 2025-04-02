@@ -300,7 +300,7 @@ void API::ExportRecords(const int32& documentId, TArray<FRecord> Records, FOnUpd
 				for (const FCustomField& Cfs : Col.cfs)
 				{
 					TSharedPtr<FJsonObject> CfsDict = MakeShareable(new FJsonObject);
-					CfsDict->SetStringField(TEXT("t"), Cfs.Title);
+					CfsDict->SetStringField(TEXT("t"), Cfs.T);
 					CfsDict->SetStringField(TEXT("id"), Cfs.Id);
 					CfsDict->SetStringField(TEXT("v"), Cfs.V);
 
@@ -542,7 +542,7 @@ void API::FetchLanguages(FWordbeeUserData userInfo,
 
 	TSharedRef<IHttpRequest, ESPMode::ThreadSafe> Request = FHttpModule::Get().CreateRequest();
 	Request->SetURL(Url);
-	UE_LOG(LogTemp, Log, TEXT("Fetching languages with user info: %s"), *url);
+	UE_LOG(LogTemp, Log, TEXT("Fetching languages with user info: %s"), *Url);
 	Request->SetVerb(TEXT("GET"));
 	Request->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
 	Request->SetHeader(APIConstant::AuthToken, userInfo.AuthToken);

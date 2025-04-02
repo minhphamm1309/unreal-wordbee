@@ -185,12 +185,29 @@ void API::PullDocument(FWordbeeUserData userInfo, const FString& DocumentId, FOn
 
 	// Directly set the JSON string
 	FString RequestBody = TEXT("{\"includeComments\":true,\"includeCustomFields\":true,\"copySourceToTarget\":false}");
-	
+
 	Request->SetContentAsString(RequestBody);
 
 	Request->OnProcessRequestComplete().BindLambda([=](FHttpRequestPtr Req, FHttpResponsePtr Res, bool bSuccess)
 	{
-		if (bSuccess && Res.IsValid())
+		if (Res->GetResponseCode() == 401)
+		{
+			FWordbeeUserData userInfo = SingletonUtil::GetFromIni<FWordbeeUserData>();
+			Authenticate(userInfo.AccountId, userInfo.ApiKey, userInfo.Url,
+			             FOnAuthCompleted::CreateLambda(
+				             [=](
+				             FString NewToken) mutable
+				             {
+					             // Update userInfo with new token and retry request
+					             userInfo.AuthToken = NewToken;
+					             UE_LOG(LogTemp, Log,
+					                    TEXT("Authentication successful, retrying document fetch..."));
+					             SingletonUtil::SaveToIni<FWordbeeUserData>(userInfo);
+					             PullDocument(userInfo, DocumentId, callback);
+				             })
+			);
+		}
+		else if (bSuccess && Res.IsValid())
 		{
 			TSharedPtr<FJsonObject> JsonObject;
 			TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(Res->GetContentAsString());
@@ -199,6 +216,12 @@ void API::PullDocument(FWordbeeUserData userInfo, const FString& DocumentId, FOn
 				int32 RequestId = JsonObject->GetObjectField("trm")->GetIntegerField("requestid");
 				CheckStatus(userInfo, RequestId, 0, callback);
 			}
+		}
+		else
+		{
+			FMessageDialog::Open(EAppMsgType::Ok,
+			                     FText::FromString(
+				                     "Failed to PullDocument: " + FString::FromInt(Res->GetResponseCode())));
 		}
 	});
 	Request->ProcessRequest();
@@ -293,17 +316,36 @@ void API::ExportRecords(const int32& documentId, TArray<FRecord> Records, FOnUpd
 		[documentId, Records, TargetRecord, TargetCol, bIsRetry,onCompleted](
 		FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful)
 		{
-			if (bWasSuccessful)
+			if (Response->GetResponseCode() == 401)
+			{
+				FWordbeeUserData userInfo = SingletonUtil::GetFromIni<FWordbeeUserData>();
+				Authenticate(userInfo.AccountId, userInfo.ApiKey, userInfo.Url,
+				             FOnAuthCompleted::CreateLambda(
+					             [=](
+					             FString NewToken) mutable
+					             {
+						             // Update userInfo with new token and retry request
+						             userInfo.AuthToken = NewToken;
+						             UE_LOG(LogTemp, Log,
+						                    TEXT("Authentication successful, retrying document fetch..."));
+						             SingletonUtil::SaveToIni<FWordbeeUserData>(userInfo);
+
+						             API::ExportRecords(documentId, Records, onCompleted, TargetRecord, TargetCol,
+						                                true);
+					             })
+				);
+			}
+			else if (bWasSuccessful)
 			{
 				TSharedPtr<FJsonObject> JsonObject;
 				TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(*Response->GetContentAsString());
 				if (FJsonSerializer::Deserialize(Reader, JsonObject))
 				{
 					int32 RequestId = JsonObject->GetObjectField("trm")->GetIntegerField("requestid");
-					onCompleted.ExecuteIfBound(true, RequestId);
+					onCompleted.ExecuteIfBound(true, RequestId, "Done");
 				}
 			}
-			else if (!bWasSuccessful || Response->GetResponseCode() == 401) // Unauthorized
+			else if (!bWasSuccessful) // Unauthorized
 			{
 				if (!bIsRetry)
 				{
@@ -312,7 +354,8 @@ void API::ExportRecords(const int32& documentId, TArray<FRecord> Records, FOnUpd
 				}
 				if (bIsRetry)
 				{
-					onCompleted.ExecuteIfBound(false, 0);
+					onCompleted.ExecuteIfBound(
+						false, 0, "ERROR " + FString::FromInt(Response->GetResponseCode()) + "\n please try again");
 				}
 			}
 		});
@@ -323,13 +366,21 @@ void API::ExportRecords(const int32& documentId, TArray<FRecord> Records, FOnUpd
 void API::PushRecords(TArray<FRecord> Records, FOnUpdateDocumentComplete onCompleted)
 {
 	FDocumentData document = SingletonUtil::GetFromIni<FDocumentData>();
-	ExportRecords(document.did, Records, FOnUpdateDocumentComplete::CreateLambda([=](bool bSuccess, const int32& RequestId)
-	{
-		CheckStatus(RequestId, 0, FOnCheckStatusComplete::CreateLambda([=](bool bSuccess)
-		{
-			onCompleted.ExecuteIfBound(bSuccess, 0);
-		}));
-	}));
+	ExportRecords(document.did, Records, FOnUpdateDocumentComplete::CreateLambda(
+		              [=](bool bSuccess, const int32& RequestId, const FString& message)
+		              {
+			              if (bSuccess)
+			              {
+				              CheckStatus(RequestId, 0, FOnCheckStatusComplete::CreateLambda([=](bool bSuccess)
+				              {
+					              onCompleted.ExecuteIfBound(bSuccess, RequestId, message);
+				              }));
+			              }
+			              else
+			              {
+				              onCompleted.ExecuteIfBound(bSuccess, RequestId, message);
+			              }
+		              }));
 }
 
 void API::CheckStatus(FWordbeeUserData userInfo, int32 RequestId, int32 RetryCount, FOnPullDocumentComplete callback)

@@ -22,6 +22,7 @@ public:
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
+	void StoreData();
 
 private:
 	FWordbeeUserData UserInfo;

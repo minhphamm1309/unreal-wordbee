@@ -12,9 +12,12 @@
 #include "Internationalization/Internationalization.h"
 #include "Widgets/Notifications/SNotificationList.h"
 #include "WordBeeEditor/Command/CreateDataAsset/SUserData.h"
+#include "WordBeeEditor/Command/DocumentList/FDocumentDataResponse.h"
+#include "WordBeeEditor/Command/LinkProject/ULinkDocumentCommand.h"
 #include "WordBeeEditor/Command/StoredLocalize/StoredLocailzationCommand.h"
 #include "WordBeeEditor/Models/FDocumentData.h"
 #include "WordBeeEditor/Models/FRecord.h"
+#include "WordBeeEditor/Utils/FileChangeUtil.h"
 #include "WordBeeEditor/Utils/LocalizeUtil.h"
 #include "WordBeeEditor/Utils/SingletonUtil.h"
 
@@ -284,6 +287,61 @@ void SEditorConfigWidget::Construct(const FArguments& InArgs)
 	];
 }
 
+void SEditorConfigWidget::StoreData()
+{
+	TArray<FString> SelectedLanguages;
+	for (const TSharedPtr<FLanguageInfo>& Lang : CommonLocales)
+	{
+		if (Lang->IsSelected)
+		{
+			SelectedLanguages.Add(Lang->V);
+		}
+	}
+
+	if (SelectedLanguages.Num() == 0)
+	{
+		FMessageDialog::Open(EAppMsgType::Ok, FText::FromString("you must select at least one language."));
+		return;
+	}
+	FDocumentData document = SingletonUtil::GetFromIni<FDocumentData>();
+	TArray<FSegment> segments;
+	// convert all document.Records to TArray<FSegment>
+	for (const FRecord& record : document.records)
+	{
+		FSegment segment;
+		segment.key = record.recordID;
+
+		for (const auto& text : record.columns)
+		{
+			if (!SelectedLanguages.Contains(text.columnID)) continue;
+			FSegmentText textSegment;
+			textSegment.v = text.text;
+			segment.texts.Add(text.columnID, textSegment);
+		}
+		segments.Add(segment);
+	}
+
+	FString msg = TEXT("Pulling data from Wordbee...");
+	if (segments.Num() > 0)
+		StoredLocailzationCommand::Execute(segments);
+	else
+	{
+		msg = TEXT("No data to pull from Wordbee.");
+	}
+	
+	FNotificationInfo Info(FText::FromString(msg));
+	Info.bFireAndForget = false; // Set this to false so we can control the notification manually
+	Info.FadeOutDuration = 2.0f; // How long it takes to fade out when closing
+	Info.ExpireDuration = 0.0f;  // Don't automatically expire
+	NotificationPtr = FSlateNotificationManager::Get().AddNotification(Info);
+	if (NotificationPtr.IsValid())
+	{
+		NotificationPtr->SetCompletionState(SNotificationItem::CS_Pending);
+		NotificationPtr->SetCompletionState(SNotificationItem::CS_Success); // Optionally, change the state to indicate success
+		NotificationPtr->ExpireAndFadeout(); 
+	}
+}
+
 TSharedRef<ITableRow> SEditorConfigWidget::GenerateLanguageCheckbox(TSharedPtr<FLanguageInfo> Item,
                                                                     const TSharedRef<STableViewBase>& OwnerTable)
 {
@@ -376,43 +434,51 @@ FReply SEditorConfigWidget::OnCPullButtonClicked()
 			SelectedLanguages.Add(Lang->V);
 		}
 	}
-	FDocumentData document = SingletonUtil::GetFromIni<FDocumentData>();
-	TArray<FSegment> segments;
-	// convert all document.Records to TArray<FSegment>
-	for (const FRecord& record : document.records)
-	{
-		FSegment segment;
-		segment.key = record.recordID;
 
-		for (const auto& text : record.columns)
-		{
-			if (!SelectedLanguages.Contains(text.columnID)) continue;
-			FSegmentText textSegment;
-			textSegment.v = text.text;
-			segment.texts.Add(text.columnID, textSegment);
-		}
-		segments.Add(segment);
-	}
-
-	FString msg = TEXT("Pulling data from Wordbee...");
-	if (segments.Num() > 0)
-		StoredLocailzationCommand::Execute(segments);
-	else
+	if (SelectedLanguages.Num() == 0)
 	{
-		msg = TEXT("No data to pull from Wordbee.");
+		FMessageDialog::Open(EAppMsgType::Ok, FText::FromString("you must select at least one language."));
+		return FReply::Handled();
 	}
 	
-	FNotificationInfo Info(FText::FromString(msg));
-	Info.bFireAndForget = false; // Set this to false so we can control the notification manually
-	Info.FadeOutDuration = 2.0f; // How long it takes to fade out when closing
-	Info.ExpireDuration = 0.0f;  // Don't automatically expire
-	NotificationPtr = FSlateNotificationManager::Get().AddNotification(Info);
-	if (NotificationPtr.IsValid())
+	const int32 TotalSteps = 100; // Example step count
+	FScopedSlowTask SlowTask(TotalSteps, FText::FromString(TEXT("Processing... Please wait.")));
+	SlowTask.MakeDialog();
+	
+	FWordbeeUserData userInfo = SingletonUtil::GetFromIni<FWordbeeUserData>();
+	ULinkDocumentCommand::Execute(userInfo, FString::FromInt(userInfo.DocumentId), FOnLinkDocumentComplete::CreateLambda([=,this] (bool bSuccess, const FWordbeeDocument& document)
 	{
-		NotificationPtr->SetCompletionState(SNotificationItem::CS_Pending);
-		NotificationPtr->SetCompletionState(SNotificationItem::CS_Success); // Optionally, change the state to indicate success
-		NotificationPtr->ExpireAndFadeout(); 
+		if (bSuccess)
+		{
+			FDocumentData documentData = SingletonUtil::GetFromIni<FDocumentData>();
+			ULinkDocumentCommand::SaveDocument(
+				document, documentData.projectId, documentData.projectName, documentData.documentName);
+			StoreData();
+			
+			Locate<LocalizeUtil>::Get()->RecordsChanged.Empty();
+			FileChangeUtil::CopyLocalizeToSaved();
+		}
+		else
+		{
+			FMessageDialog::Open(EAppMsgType::Ok, FText::FromString("Failed to pull data \n please check your connection and try again."));
+		}
+	}));
+	
+	for (int32 i = 0; i < TotalSteps; i++)
+	{
+		if (SlowTask.ShouldCancel()) // Allows the user to cancel the operation
+		{
+			break;
+		}
+
+		// Simulate work (Replace this with your actual logic)
+		FPlatformProcess::Sleep(0.1f); 
+
+		// Update the progress bar
+		SlowTask.EnterProgressFrame(1, FText::FromString(FString::Printf(TEXT("Step %d/%d"), i+1, TotalSteps)));
 	}
+	
+	
 	return FReply::Handled();
 }
 
@@ -420,7 +486,7 @@ FReply SEditorConfigWidget::OnPushButtonClicked()
 {
 	LocalizeUtil * localizeUtil = Locate<LocalizeUtil>::Get();
 
-	API::PushRecords(localizeUtil->RecordsChanged, FOnUpdateDocumentComplete::CreateLambda([](bool bSuccess, const int32& RequestId)
+	API::PushRecords(localizeUtil->RecordsChanged, FOnUpdateDocumentComplete::CreateLambda([](bool bSuccess, const int32& _ , const FString& message)
 	{
 		if (bSuccess)
 		{
@@ -434,10 +500,13 @@ FReply SEditorConfigWidget::OnPushButtonClicked()
 				NotificationPtr->SetCompletionState(SNotificationItem::CS_Success);
 				NotificationPtr->ExpireAndFadeout();
 			}
+			
+			Locate<LocalizeUtil>::Get()->RecordsChanged.Empty();
+			FileChangeUtil::CopyLocalizeToSaved();
 		}
 		else
 		{
-			FMessageDialog::Open(EAppMsgType::Ok, FText::FromString("Failed to push data to Wordbee."));
+			FMessageDialog::Open(EAppMsgType::Ok, FText::FromString("Failed to push data to Wordbee: " + message));
 		}
 	}));
 	

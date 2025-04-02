@@ -8,11 +8,11 @@
 				{
 					"Source":
 					{
-						"Text": "Username english "
+						"Text": "Username english 14"
 					},
 					"Translation":
 					{
-						"Text": "Username english "
+						"Text": "Username english 14"
 					},
 					"Key": "WB_LABEL_USERNAME"
 				},
@@ -30,11 +30,11 @@
 				{
 					"Source":
 					{
-						"Text": "Change Language"
+						"Text": "Change Language UPDA"
 					},
 					"Translation":
 					{
-						"Text": "Change Language"
+						"Text": "Change Language UPDA"
 					},
 					"Key": "WB_LABEL_CHANGLANGUAGE"
 				},
@@ -118,11 +118,11 @@
 				{
 					"Source":
 					{
-						"Text": "vvv"
+						"Text": "1vvv"
 					},
 					"Translation":
 					{
-						"Text": "vvv"
+						"Text": "1vvv"
 					},
 					"Key": "iloveyou"
 				},
@@ -151,11 +151,11 @@
 				{
 					"Source":
 					{
-						"Text": "Raiden shogun"
+						"Text": "aaaRaiden shogun"
 					},
 					"Translation":
 					{
-						"Text": "Raiden shogun"
+						"Text": "aaaRaiden shogun"
 					},
 					"Key": "mylover"
 				},
@@ -246,6 +246,28 @@
 						"Text": "Collect rare artifacts and legendary weapons to enhance your strength and become a true champion of the realm."
 					},
 					"Key": "6"
+				},
+				{
+					"Source":
+					{
+						"Text": "Username english "
+					},
+					"Translation":
+					{
+						"Text": "Username english "
+					},
+					"Key": "WB_LABEL_USERNAME_CHANGE"
+				},
+				{
+					"Source":
+					{
+						"Text": "Username english "
+					},
+					"Translation":
+					{
+						"Text": "Username english "
+					},
+					"Key": "WB_LABEL_USERNAME_MATTBERRY"
 				}
 			]
 		}

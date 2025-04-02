@@ -10,7 +10,7 @@
 
 DECLARE_DELEGATE_OneParam(FOnAuthCompleted, FString);
 DECLARE_DELEGATE_OneParam(FOnPullDocumentComplete, FString);
-DECLARE_DELEGATE_TwoParams(FOnUpdateDocumentComplete, bool, const int32&);
+DECLARE_DELEGATE_ThreeParams(FOnUpdateDocumentComplete, bool, const int32& , const FString& );
 DECLARE_DELEGATE_OneParam(FOnCheckStatusComplete, bool);
 
 class API

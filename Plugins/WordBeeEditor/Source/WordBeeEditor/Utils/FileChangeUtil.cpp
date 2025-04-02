@@ -83,10 +83,7 @@ TArray<FRecord> FileChangeUtil::GetCurrentRecords()
 	for (int i = 0; i < document.records.Num(); i++)
 	{
 		FRecord record = document.records[i];
-		if (record.recordID.Equals("Wordbee"))
-		{
-			records.Add(record);
-		}
+		records.Add(record);
 	}
 	return records;
 }

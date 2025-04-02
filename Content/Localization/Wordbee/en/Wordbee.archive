@@ -8,11 +8,11 @@
 				{
 					"Source":
 					{
-						"Text": "test select lang 5 "
+						"Text": "Username english 142"
 					},
 					"Translation":
 					{
-						"Text": "test select lang 5 "
+						"Text": "Username english 142"
 					},
 					"Key": "WB_LABEL_USERNAME"
 				},
@@ -118,11 +118,11 @@
 				{
 					"Source":
 					{
-						"Text": "vvv"
+						"Text": "1vvv"
 					},
 					"Translation":
 					{
-						"Text": "vvv"
+						"Text": "1vvv"
 					},
 					"Key": "iloveyou"
 				},
@@ -151,11 +151,11 @@
 				{
 					"Source":
 					{
-						"Text": "Raiden shogun"
+						"Text": "aaaRaiden shogun"
 					},
 					"Translation":
 					{
-						"Text": "Raiden shogun"
+						"Text": "aaaRaiden shogun"
 					},
 					"Key": "mylover"
 				},

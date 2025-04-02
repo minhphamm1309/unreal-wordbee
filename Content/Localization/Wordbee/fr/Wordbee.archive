@@ -8,11 +8,11 @@
 				{
 					"Source":
 					{
-						"Text": "test select lang 4 "
+						"Text": "Username english 142"
 					},
 					"Translation":
 					{
-						"Text": "Username fr "
+						"Text": "Username fr 1"
 					},
 					"Key": "WB_LABEL_USERNAME"
 				},
@@ -118,7 +118,7 @@
 				{
 					"Source":
 					{
-						"Text": "vvv"
+						"Text": "1vvv"
 					},
 					"Translation":
 					{
@@ -151,7 +151,7 @@
 				{
 					"Source":
 					{
-						"Text": "Raiden shogun"
+						"Text": "aaaRaiden shogun"
 					},
 					"Translation":
 					{

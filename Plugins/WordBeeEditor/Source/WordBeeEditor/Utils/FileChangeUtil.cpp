@@ -76,29 +76,30 @@ void FileChangeUtil::UpdateRecord(const FRecord& Record)
 	localizeUtil->RecordsChanged.Add(Record);
 }
 
-void FileChangeUtil::UpdateDocumentData(const FDocumentData& Document, const FString& Key, const FString& langCode,
+void FileChangeUtil::UpdateDocumentData(FDocumentData& Document, const FString& Key, const FString& langCode,
 	const FString& Text)
 {
-	FRecord Record;
-	for (const FRecord& record : Document.records)
+	for (int i = 0; i < Document.records.Num(); i++)
 	{
-		if (record.recordID.Equals(Key))
+		if (Document.records[i].recordID.Equals(Key))
 		{
-			Record = record;
-			
+			TArray<FColumn> cols = Document.records[i].columns;
+			for (int j = 0; j < cols.Num(); j++)
+			{
+				if (cols[j].columnID.Equals(langCode))
+				{
+					cols[j].text = Text;
+					Document.records[i].columns = cols;
+					UpdateRecord(Document.records[i]);
+					break;
+				}
+			}
 			break;
 		}
 	}
-	for (FColumn& column : Record.columns)
-	{
-		if (column.columnID.Equals(langCode))
-		{
-			column.text = Text;
-			break;
-		}
-	}
+
+	SingletonUtil::SaveToIni(Document);
 	// Update the record in the localizeUtil->RecordsChanged
-	UpdateRecord(Record);
 }
 
 void FileChangeUtil::CopyLocalizeToSaved()

@@ -18,6 +18,7 @@ public:
     void Construct(const FArguments& InArgs);
 
 private:
+    bool bIsFetching = false;
     FString DocumentID;
     FString DocumentName;
     FString SourceLanguage;

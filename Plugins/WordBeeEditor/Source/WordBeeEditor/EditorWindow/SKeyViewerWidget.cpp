@@ -244,27 +244,27 @@ FReply SKeyViewerWidget::OnGetDataClicked()
 	// Handle fetching data based on EnteredKey
 	API::PullDocument(userinfo, FString::FromInt(userinfo.DocumentId), FOnPullDocumentComplete::CreateLambda(
 		                  [this](FString Result)
-		                  {
-			                  CustomFields.Empty();
-			                  FWordbeeDocument doc;
-			                  if (FJsonObjectConverter::JsonObjectStringToUStruct(Result, &doc, 0, CPF_Transient))
-			                  {
-			                  	if (doc.Segments.Num() < 0)
-			                  	{
-			                  		return;
-			                  	}
-			                  	MinLength = FText::AsNumber(doc.Segments[0].chmin);
-								  MaxLength = FText::AsNumber(doc.Segments[0].chmax);
-			                  	
-				                  AddCustomFieldsFromSegment(doc, CustomFields);
-				                  UE_LOG(LogTemp, Log, TEXT("CustomFieldsCount: %d"), CustomFields.Num());
-				                  if (CustomFieldsListView.IsValid())
-				                  {
-					                  CustomFieldsListView->RequestListRefresh();
-				                  }
-			                  }
-		                  }
-	                  ), {EnteredKey});
+      {
+          CustomFields.Empty();
+          FWordbeeDocument doc;
+          if (FJsonObjectConverter::JsonObjectStringToUStruct(Result, &doc, 0, CPF_Transient))
+          {
+            if (doc.Segments.Num() < 0)
+            {
+                return;
+            }
+            MinLength = FText::AsNumber(doc.Segments[0].chmin);
+			  MaxLength = FText::AsNumber(doc.Segments[0].chmax);
+            
+              AddCustomFieldsFromSegment(doc, CustomFields);
+              UE_LOG(LogTemp, Log, TEXT("CustomFieldsCount: %d"), CustomFields.Num());
+              if (CustomFieldsListView.IsValid())
+              {
+                  CustomFieldsListView->RequestListRefresh();
+              }
+          }
+      }
+  ), {EnteredKey});
 	return FReply::Handled();
 }
 

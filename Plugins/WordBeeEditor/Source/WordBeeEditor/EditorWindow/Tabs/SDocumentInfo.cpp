@@ -3,23 +3,12 @@
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SBorder.h"
-#include "Widgets/Layout/SUniformGridPanel.h"
 #include "Widgets/Input/SButton.h"
 #include "WordBeeEditor/API/API.h"
 #include "WordBeeEditor/Utils/SingletonUtil.h"
 
 void SDocumentInfo::Construct(const FArguments& InArgs)
 {
-	DocumentID = InArgs._DocumentID;
-	DocumentName = InArgs._DocumentName;
-	SourceLanguage = InArgs._SourceLanguage;
-	TargetLanguages = InArgs._TargetLanguages;
-	LastTMSChange = InArgs._LastTMSChange;
-	LastSynchronization = InArgs._LastSynchronization;
-
-	// Convert target languages array to a single string
-	FString TargetLanguagesStr = FString::Join(TargetLanguages, TEXT(", "));
-
 	ChildSlot
 	[
 		SNew(SBorder)
@@ -35,12 +24,13 @@ void SDocumentInfo::Construct(const FArguments& InArgs)
 			.HAlign(HAlign_Left)
 			[
 				SNew(SButton)
-				.Text(FText::FromString("Refresh"))
-				.OnClicked_Lambda([this]() -> FReply
-				{
-					RefreshDocumentInfo();
-					return FReply::Handled();
-				})
+		             .Text(FText::FromString("Refresh"))
+		             .IsEnabled_Lambda([this]() { return !bIsFetching; }) // Disable when fetching
+		             .OnClicked_Lambda([this]() -> FReply
+		             {
+			             RefreshDocumentInfo();
+			             return FReply::Handled();
+		             })
 			]
 
 			// Flex Container Details Title
@@ -59,7 +49,6 @@ void SDocumentInfo::Construct(const FArguments& InArgs)
 			[
 				SNew(SGridPanel)
 				.FillColumn(1, 1.0f)
-				// Document ID
 				+ SGridPanel::Slot(0, 0)
 				.Padding(FMargin(0, 0, 10, 0))
 				[
@@ -71,7 +60,6 @@ void SDocumentInfo::Construct(const FArguments& InArgs)
 					.Text_Lambda([this]() { return FText::FromString(DocumentID); }) // Dynamic binding
 				]
 
-				// Document Name
 				+ SGridPanel::Slot(0, 1)
 				.Padding(FMargin(0, 0, 10, 0))
 				[
@@ -83,8 +71,6 @@ void SDocumentInfo::Construct(const FArguments& InArgs)
 					.Text_Lambda([this]() { return FText::FromString(DocumentName); })
 				]
 
-
-				// Source Language
 				+ SGridPanel::Slot(0, 2)
 				.Padding(FMargin(0, 0, 10, 0))
 				[
@@ -96,7 +82,6 @@ void SDocumentInfo::Construct(const FArguments& InArgs)
 					.Text_Lambda([this]() { return FText::FromString(SourceLanguage); })
 				]
 
-				// Target Languages
 				+ SGridPanel::Slot(0, 3)
 				.Padding(FMargin(0, 0, 10, 0))
 				[
@@ -120,8 +105,6 @@ void SDocumentInfo::Construct(const FArguments& InArgs)
 					]
 				]
 
-
-				// Last TMS Change
 				+ SGridPanel::Slot(0, 4)
 				.Padding(FMargin(0, 0, 10, 0))
 				[
@@ -133,8 +116,6 @@ void SDocumentInfo::Construct(const FArguments& InArgs)
 					.Text_Lambda([this]() { return FText::FromString(LastTMSChange); })
 				]
 
-
-				// Last Synchronization
 				+ SGridPanel::Slot(0, 5)
 				.Padding(FMargin(0, 0, 10, 0))
 				[
@@ -152,18 +133,28 @@ void SDocumentInfo::Construct(const FArguments& InArgs)
 
 void SDocumentInfo::RefreshDocumentInfo()
 {
+	if (bIsFetching)
+	{
+		return; // Prevent multiple fetches
+	}
+	bIsFetching = true;
 	FWordbeeUserData userInfo = SingletonUtil::GetFromIni<FWordbeeUserData>();
 	API::FetchDocumentById(userInfo, FString::FromInt(userInfo.DocumentId), [this](const FDocumentInfo& DocumentInfo)
-	{
-		DocumentID = FString::FromInt(DocumentInfo.Id);
-		DocumentName = DocumentInfo.Name;
-		SourceLanguage = FString::Printf(TEXT("%s (%s)"), *DocumentInfo.Src.T, *DocumentInfo.Src.V);
-		// Clear previous target languages
-		TargetLanguages.Empty();
-		// Convert target languages to a string
-		for (const FLanguageInfo& Lang : DocumentInfo.Trgs)
-		{
-			TargetLanguages.Add(FString::Printf(TEXT("%s (%s)"), *Lang.T, *Lang.V));
-		}
-	});
+	   {
+	       DocumentID = FString::FromInt(DocumentInfo.Id);
+	       DocumentName = DocumentInfo.Name;
+	       SourceLanguage = FString::Printf(
+	           TEXT("%s (%s)"), *DocumentInfo.Src.T, *DocumentInfo.Src.V);
+	       TargetLanguages.Empty();
+	       for (const FLanguageInfo& Lang : DocumentInfo.Trgs)
+	       {
+	           TargetLanguages.Add(FString::Printf(TEXT("%s (%s)"), *Lang.T, *Lang.V));
+	       }
+	       bIsFetching = false;
+	   },
+	   [this](const FString& ErrorMessage)
+	   {
+	       bIsFetching = false;
+	       FMessageDialog::Open(EAppMsgType::Ok, FText::FromString(ErrorMessage));
+	   });
 }

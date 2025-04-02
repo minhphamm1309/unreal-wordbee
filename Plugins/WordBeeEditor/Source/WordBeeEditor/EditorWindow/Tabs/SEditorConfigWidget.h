@@ -22,6 +22,7 @@ public:
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
+	void StoreData();
 
 private:
 	bool bIsFetching = false;
@@ -33,12 +34,14 @@ private:
 	TSharedPtr<SComboBox<TSharedPtr<FLanguageInfo>>> MissingLocalesCbo;
 	TSharedPtr<SListView<TSharedPtr<FLanguageInfo>>> CommonLocalesListView;
 	TSharedPtr<STileView<TSharedPtr<FLanguageInfo>>> LanguageTileView;
+	FDelegateHandle WatcherHandle;
 	void OnAutoSyncChanged(ECheckBoxState NewState);
 	void OnSyncIntervalChanged(const FText& NewText, ETextCommit::Type CommitType);
 	void OnTargetSyncChanged(TSharedPtr<FString> NewValue, ESelectInfo::Type);
 	TSharedRef<SWidget> MakeComboWidget(TSharedPtr<FString> InOption);
 	FReply OnSaveClicked();
 	FReply OnCPullButtonClicked();
+	FReply OnPushButtonClicked();
 	TSharedPtr<FString> GetCurrentTargetSyncOption() const;
 	void OnStringTableSelected(const FAssetData& AssetData);
 	TSharedRef<SWidget>GenerateLanguageOption(TSharedPtr<FLanguageInfo> Item);

@@ -1,9 +1,20 @@
 #include "WordBeeEditorModule.h"
 
+#include "DirectoryWatcherModule.h"
+#include "IDirectoryWatcher.h"
+#include "JsonObjectConverter.h"
 #include "WordBeeEditor/Command/CreateDataAsset/CreateConfigDataAssetCommand.h"
 #include "WordBeeEditor/Command/CreateDataAsset/CreateUserDataAssetCommand.h"
 #include "WordBeeEditor/EditorWindow/SKeyViewerWidget.h"
 #include "WordBeeEditor/EditorWindow/SWorkFlowStatus.h"
+#include "WordBeeEditor/EditorWindow/WordBeeEditorConfigWindow.h"
+#include "WordBeeEditor/Models/FDocumentData.h"
+#include "WordBeeEditor/Models/WordbeeResponse.h"
+#include "WordBeeEditor/Models/WordbeeUserData.h"
+#include "WordBeeEditor/Utils/APIConstant.h"
+#include "WordBeeEditor/Utils/FileChangeUtil.h"
+#include "WordBeeEditor/Utils/LocalizeUtil.h"
+#include "WordBeeEditor/Utils/SingletonUtil.h"
 
 void FWordBeeEditorModule::StartupModule()
 {
@@ -20,12 +31,58 @@ void FWordBeeEditorModule::StartupModule()
 	// Optionally, add a menu entry
 	UToolMenus::RegisterStartupCallback(FSimpleMulticastDelegate::FDelegate::CreateRaw(this, &FWordBeeEditorModule::RegisterMenus));
 
-
+	Locate<LocalizeUtil>::Set(new LocalizeUtil());
+	StartWatcherLocalization();
 	UE_LOG(LogTemp, Log, TEXT("WordBeeEditor: Successfully started up module!"));
+}
+
+void FWordBeeEditorModule::StartWatcherLocalization()
+{
+	FString LocDir = FPaths::ProjectContentDir() / TEXT("Localization");
+	IDirectoryWatcher* DirectoryWatcher = FModuleManager::LoadModuleChecked<FDirectoryWatcherModule>("DirectoryWatcher").Get();
+	if (DirectoryWatcher)
+	{
+		DirectoryWatcher->RegisterDirectoryChangedCallback_Handle(
+			LocDir,
+			IDirectoryWatcher::FDirectoryChanged::CreateLambda([this](const TArray<FFileChangeData>& FileChanges)
+			{
+				FString LocDir = FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / TEXT("Localization"));
+				for (const FFileChangeData& Change : FileChanges)
+				{
+					// get only the file with .archive extension
+					FString extention = FPaths::GetExtension(Change.Filename);
+					if (extention.Equals("archive") == false)
+					{
+						continue;
+					}
+					FString fileChangedPath = Change.Filename.Replace(*LocDir, TEXT(""));
+					UE_LOG(LogTemp, Warning, TEXT("Localization file changed: %s"), *fileChangedPath);
+					SyncLocalizationFileChanged(fileChangedPath);
+				}
+			}),
+			WatcherHandle
+		);
+	}
+	
+}
+
+void FWordBeeEditorModule::StopWatcherLocalization()
+{
+	FString LocalizationDir = FPaths::ProjectContentDir() / TEXT("Localization");
+
+	IDirectoryWatcher* DirectoryWatcher = FModuleManager::LoadModuleChecked<FDirectoryWatcherModule>("DirectoryWatcher").Get();
+	if (DirectoryWatcher && WatcherHandle.IsValid())
+	{
+		DirectoryWatcher->UnregisterDirectoryChangedCallback_Handle(LocalizationDir, WatcherHandle);
+		WatcherHandle.Reset();
+		UE_LOG(LogTemp, Log, TEXT("Stopped watching localization files."));
+	}
 }
 
 void FWordBeeEditorModule::ShutdownModule()
 {
+	StopWatcherLocalization();
+	Locate<LocalizeUtil>::Clear();
 	FGlobalTabmanager::Get()->UnregisterNomadTabSpawner(WordBeeConfigEditorTabName);
 }
 
@@ -114,4 +171,9 @@ void FWordBeeEditorModule::OnKeyViewerClicked()
 void FWordBeeEditorModule::OnWorkFlowStatusClick()
 {
 	FGlobalTabmanager::Get()->TryInvokeTab(WorkFlowStatusTabName);
+}
+
+void FWordBeeEditorModule::SyncLocalizationFileChanged(const FString& fileChanged)
+{
+	FileChangeUtil::FileChange(fileChanged);
 }

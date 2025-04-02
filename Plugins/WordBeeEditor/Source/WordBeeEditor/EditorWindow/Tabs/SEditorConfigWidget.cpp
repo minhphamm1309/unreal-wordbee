@@ -492,7 +492,11 @@ FReply SEditorConfigWidget::OnCPullButtonClicked()
 FReply SEditorConfigWidget::OnPushButtonClicked()
 {
 	LocalizeUtil * localizeUtil = Locate<LocalizeUtil>::Get();
-
+	if (localizeUtil->RecordsChanged.Num() == 0)
+	{
+		FMessageDialog::Open(EAppMsgType::Ok, FText::FromString(" No data to push to Wordbee."));
+		return FReply::Handled();
+	}
 	API::PushRecords(localizeUtil->RecordsChanged, FOnUpdateDocumentComplete::CreateLambda([](bool bSuccess, const int32& _ , const FString& message)
 	{
 		if (bSuccess)

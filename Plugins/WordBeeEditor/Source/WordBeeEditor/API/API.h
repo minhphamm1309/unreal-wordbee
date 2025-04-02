@@ -41,9 +41,11 @@ public:
 						TFunction<void(const TArray<FWorkflowStatus>&)> onSuccess,
 						TFunction<void(const FString&)> onError=nullptr, bool IsRetry=false);
 	static void PushRecords(TArray<FRecord> Records, FOnUpdateDocumentComplete onCompleted);
+	static void UpdateSegment(FWordbeeUserData userInfo, FSegment segment, FOnUpdateDocumentComplete onCompleted);
 private:
 	FOnAuthCompleted OnAuthCompleted;
 	void OnAuthResponseReceived(FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful);
 	static void ExportRecords(const int32& documentId, TArray<FRecord> records, FOnUpdateDocumentComplete onCompleted,
 		FRecord* TargetRecord = nullptr, FColumn* TargetCol = nullptr, bool bIsRetry = false);
+	static void ExportSegment(FWordbeeUserData userInfo, FSegment segment, FOnUpdateDocumentComplete onCompleted, bool bIsRetry = false);
 };

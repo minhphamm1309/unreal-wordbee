@@ -651,5 +651,82 @@ void API::FetchWorkflow(FWordbeeUserData userInfo, const FString& DocumentId,
 	Request->ProcessRequest();
 }
 
+void API::ExportSegment(FWordbeeUserData userInfo, FSegment segment, FOnUpdateDocumentComplete onCompleted, bool bIsRetry)
+{
+	TSharedRef<IHttpRequest, ESPMode::ThreadSafe> Request = FHttpModule::Get().CreateRequest();
+	FString url = ConstructUrl(userInfo.AccountId, userInfo.Url,
+	                           FString::Format(*ROUTER_DOCUMENT_UPDATE, {userInfo.DocumentId}));
+	Request->SetURL(url);
+	Request->SetVerb(TEXT("POST"));
+	Request->SetHeader(APIConstant::AuthAccountID, userInfo.AccountId);
+	Request->SetHeader(APIConstant::AuthToken, userInfo.AuthToken);
+	Request->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
+	TSharedPtr<FJsonObject> Mode = MakeShareable(new FJsonObject);
+	Mode->SetStringField(TEXT("mode"), TEXT("partial"));
+	TSharedPtr<FJsonObject> Body = MakeShareable(new FJsonObject);
+	Body->SetObjectField(TEXT("header"), Mode);
+	TSharedPtr<FJsonObject> segmentJson = MakeShareable(new FJsonObject());
+	FJsonObjectConverter::UStructToJsonObject(FSegment::StaticStruct(), &segment, segmentJson.ToSharedRef(), 0, 0); 
+	TArray<TSharedPtr<FJsonValue>> SegmentsArray;
+	SegmentsArray.Add(MakeShareable(new FJsonValueObject(segmentJson))); 
+	Body->SetArrayField(TEXT("segments"), SegmentsArray);
+	FString JsonBody;
+	TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&JsonBody);
+	FJsonSerializer::Serialize(Body.ToSharedRef(), Writer);
+	Request->SetContentAsString(JsonBody);
+	Request->OnProcessRequestComplete().BindLambda(
+		[userInfo, segment, bIsRetry,onCompleted](
+		FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful)
+		{
+			if (Response->GetResponseCode() == 401)
+			{
+				FWordbeeUserData userInfo = SingletonUtil::GetFromIni<FWordbeeUserData>();
+				Authenticate(userInfo.AccountId, userInfo.ApiKey, userInfo.Url,
+				             FOnAuthCompleted::CreateLambda(
+					             [=](
+					             FString NewToken) mutable
+					             {
+						             // Update userInfo with new token and retry request
+						             userInfo.AuthToken = NewToken;
+						             UE_LOG(LogTemp, Log,
+						                    TEXT("Authentication successful, retrying document fetch..."));
+						             SingletonUtil::SaveToIni<FWordbeeUserData>(userInfo);
+						             API::ExportSegment(userInfo, segment, onCompleted, true);
+					             })
+				);
+			}
+			else if (bWasSuccessful)
+			{
+				TSharedPtr<FJsonObject> JsonObject;
+				TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(*Response->GetContentAsString());
+				if (FJsonSerializer::Deserialize(Reader, JsonObject))
+				{
+					int32 RequestId = JsonObject->GetObjectField("trm")->GetIntegerField("requestid");
+					onCompleted.ExecuteIfBound(true, RequestId, "Done");
+				}
+			}
+		});
+	Request->ProcessRequest();
+}
+
+void API::UpdateSegment(FWordbeeUserData userInfo, FSegment segment, FOnUpdateDocumentComplete onCompleted)
+{
+	ExportSegment(userInfo, segment, FOnUpdateDocumentComplete::CreateLambda(
+					  [=](bool bSuccess, const int32& RequestId, const FString& message)
+					  {
+						  if (bSuccess)
+						  {
+							  CheckStatus(RequestId, 0, FOnCheckStatusComplete::CreateLambda([=](bool bSuccess)
+							  {
+								  onCompleted.ExecuteIfBound(bSuccess, RequestId, message);
+							  }));
+						  }
+						  else
+						  {
+							  onCompleted.ExecuteIfBound(bSuccess, RequestId, message);
+						  }
+					  }));
+}
+
 
 

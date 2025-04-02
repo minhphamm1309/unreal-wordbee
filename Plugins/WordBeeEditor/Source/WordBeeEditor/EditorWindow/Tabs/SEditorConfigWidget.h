@@ -25,6 +25,7 @@ public:
 	void StoreData();
 
 private:
+	void OnPushCheckboxChanged(ECheckBoxState CheckBoxState);
 	bool bIsFetching = false;
 	FWordbeeUserData UserInfo;
 	FEditorConfig Config;
@@ -34,6 +35,8 @@ private:
 	TSharedPtr<SComboBox<TSharedPtr<FLanguageInfo>>> MissingLocalesCbo;
 	TSharedPtr<SListView<TSharedPtr<FLanguageInfo>>> CommonLocalesListView;
 	TSharedPtr<STileView<TSharedPtr<FLanguageInfo>>> LanguageTileView;
+	TSharedPtr<SCheckBox> pushOnlyChangedCheckbox;
+	
 	FDelegateHandle WatcherHandle;
 	void OnAutoSyncChanged(ECheckBoxState NewState);
 	void OnSyncIntervalChanged(const FText& NewText, ETextCommit::Type CommitType);

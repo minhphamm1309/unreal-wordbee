@@ -76,6 +76,21 @@ void FileChangeUtil::UpdateRecord(const FRecord& Record)
 	localizeUtil->RecordsChanged.Add(Record);
 }
 
+TArray<FRecord> FileChangeUtil::GetCurrentRecords()
+{
+	FDocumentData document = SingletonUtil::GetFromIni<FDocumentData>();
+	TArray<FRecord> records;
+	for (int i = 0; i < document.records.Num(); i++)
+	{
+		FRecord record = document.records[i];
+		if (record.recordID.Equals("Wordbee"))
+		{
+			records.Add(record);
+		}
+	}
+	return records;
+}
+
 void FileChangeUtil::UpdateDocumentData(FDocumentData& Document, const FString& Key, const FString& langCode,
 	const FString& Text)
 {

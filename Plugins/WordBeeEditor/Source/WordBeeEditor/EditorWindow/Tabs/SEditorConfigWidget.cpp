@@ -74,9 +74,9 @@ void SEditorConfigWidget::Construct(const FArguments& InArgs)
 
 				// Sync Interval Label
 				+ SHorizontalBox::Slot()
-				.AutoWidth()
-				.Padding(5, 0) // Reduce padding to keep them closer
-				.VAlign(VAlign_Center)
+				  .AutoWidth()
+				  .Padding(5, 0) // Reduce padding to keep them closer
+				  .VAlign(VAlign_Center)
 				[
 					SNew(STextBlock)
 					.Text(FText::FromString("Sync Interval (seconds):"))
@@ -177,10 +177,10 @@ void SEditorConfigWidget::Construct(const FArguments& InArgs)
 					             .ToolTipText(FText::FromString("Reload Missing and Common Languages"))
 					             .IsEnabled_Lambda([this]() { return !bIsFetching; }) // Disable when fetching
 					             .Cursor(EMouseCursor::Hand) // Change cursor on hover
-								[
-									SNew(SImage)
-									.Image(FAppStyle::Get().GetBrush("Icons.Refresh"))
-								]
+					[
+						SNew(SImage)
+						.Image(FAppStyle::Get().GetBrush("Icons.Refresh"))
+					]
 					[
 						SNew(SImage)
 						.Image(FAppStyle::Get().GetBrush("Icons.Refresh"))
@@ -224,7 +224,10 @@ void SEditorConfigWidget::Construct(const FArguments& InArgs)
 				.Padding(5)
 				[
 					SNew(SCheckBox)
-					.IsChecked_Lambda([this]() { return bAllLangsChecked ? ECheckBoxState::Checked : ECheckBoxState::Unchecked; }) 
+					.IsChecked_Lambda([this]()
+					{
+						return bAllLangsChecked ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
+					})
 					.OnCheckStateChanged(this, &SEditorConfigWidget::OnLanguageCheckboxChanged)
 				]
 			]
@@ -278,6 +281,26 @@ void SEditorConfigWidget::Construct(const FArguments& InArgs)
 				.Font(FAppStyle::Get().GetFontStyle("NormalFont"))
 			]
 
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(5)
+			[
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				[
+					SNew(STextBlock)
+					.Text(FText::FromString("Push Only changed data"))
+				]
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				[
+					SAssignNew(pushOnlyChangedCheckbox, SCheckBox)
+					.AccessibleText(FText::FromString("Push Only changed data"))
+					.OnCheckStateChanged(this, &SEditorConfigWidget::OnPushCheckboxChanged)
+				]
+			]
+
 			// Push Data Button (Full Width)
 			+ SVerticalBox::Slot()
 			.AutoHeight()
@@ -288,7 +311,7 @@ void SEditorConfigWidget::Construct(const FArguments& InArgs)
 				             .Text(FText::FromString("Push Data"))
 				             .HAlign(HAlign_Center) // Center horizontally
 				             .VAlign(VAlign_Center)
-				.OnClicked(this, &SEditorConfigWidget::OnPushButtonClicked)
+				             .OnClicked(this, &SEditorConfigWidget::OnPushButtonClicked)
 			]
 		]
 	];
@@ -335,18 +358,23 @@ void SEditorConfigWidget::StoreData()
 	{
 		msg = TEXT("No data to pull from Wordbee.");
 	}
-	
+
 	FNotificationInfo Info(FText::FromString(msg));
 	Info.bFireAndForget = false; // Set this to false so we can control the notification manually
 	Info.FadeOutDuration = 2.0f; // How long it takes to fade out when closing
-	Info.ExpireDuration = 0.0f;  // Don't automatically expire
+	Info.ExpireDuration = 0.0f; // Don't automatically expire
 	NotificationPtr = FSlateNotificationManager::Get().AddNotification(Info);
 	if (NotificationPtr.IsValid())
 	{
 		NotificationPtr->SetCompletionState(SNotificationItem::CS_Pending);
-		NotificationPtr->SetCompletionState(SNotificationItem::CS_Success); // Optionally, change the state to indicate success
-		NotificationPtr->ExpireAndFadeout(); 
+		NotificationPtr->SetCompletionState(SNotificationItem::CS_Success);
+		// Optionally, change the state to indicate success
+		NotificationPtr->ExpireAndFadeout();
 	}
+}
+
+void SEditorConfigWidget::OnPushCheckboxChanged(ECheckBoxState CheckBoxState)
+{
 }
 
 TSharedRef<ITableRow> SEditorConfigWidget::GenerateLanguageCheckbox(TSharedPtr<FLanguageInfo> Item,
@@ -447,30 +475,35 @@ FReply SEditorConfigWidget::OnCPullButtonClicked()
 		FMessageDialog::Open(EAppMsgType::Ok, FText::FromString("you must select at least one language."));
 		return FReply::Handled();
 	}
-	
+
 	const int32 TotalSteps = 100; // Example step count
 	FScopedSlowTask SlowTask(TotalSteps, FText::FromString(TEXT("Processing... Please wait.")));
 	SlowTask.MakeDialog();
-	
+
 	FWordbeeUserData userInfo = SingletonUtil::GetFromIni<FWordbeeUserData>();
-	ULinkDocumentCommand::Execute(userInfo, FString::FromInt(userInfo.DocumentId), FOnLinkDocumentComplete::CreateLambda([=,this] (bool bSuccess, const FWordbeeDocument& document)
-	{
-		if (bSuccess)
-		{
-			FDocumentData documentData = SingletonUtil::GetFromIni<FDocumentData>();
-			ULinkDocumentCommand::SaveDocument(
-				document, documentData.projectId, documentData.projectName, documentData.documentName);
-			StoreData();
-			
-			Locate<LocalizeUtil>::Get()->RecordsChanged.Empty();
-			FileChangeUtil::CopyLocalizeToSaved();
-		}
-		else
-		{
-			FMessageDialog::Open(EAppMsgType::Ok, FText::FromString("Failed to pull data \n please check your connection and try again."));
-		}
-	}));
-	
+	ULinkDocumentCommand::Execute(userInfo, FString::FromInt(userInfo.DocumentId),
+	                              FOnLinkDocumentComplete::CreateLambda(
+		                              [=,this](bool bSuccess, const FWordbeeDocument& document)
+		                              {
+			                              if (bSuccess)
+			                              {
+				                              FDocumentData documentData = SingletonUtil::GetFromIni<FDocumentData>();
+				                              ULinkDocumentCommand::SaveDocument(
+					                              document, documentData.projectId, documentData.projectName,
+					                              documentData.documentName);
+				                              StoreData();
+
+				                              Locate<LocalizeUtil>::Get()->RecordsChanged.Empty();
+				                              FileChangeUtil::CopyLocalizeToSaved();
+			                              }
+			                              else
+			                              {
+				                              FMessageDialog::Open(EAppMsgType::Ok,
+				                                                   FText::FromString(
+					                                                   "Failed to pull data \n please check your connection and try again."));
+			                              }
+		                              }));
+
 	for (int32 i = 0; i < TotalSteps; i++)
 	{
 		if (SlowTask.ShouldCancel()) // Allows the user to cancel the operation
@@ -479,48 +512,64 @@ FReply SEditorConfigWidget::OnCPullButtonClicked()
 		}
 
 		// Simulate work (Replace this with your actual logic)
-		FPlatformProcess::Sleep(0.1f); 
+		FPlatformProcess::Sleep(0.1f);
 
 		// Update the progress bar
-		SlowTask.EnterProgressFrame(1, FText::FromString(FString::Printf(TEXT("Step %d/%d"), i+1, TotalSteps)));
+		SlowTask.EnterProgressFrame(1, FText::FromString(FString::Printf(TEXT("Step %d/%d"), i + 1, TotalSteps)));
 	}
-	
-	
+
+
 	return FReply::Handled();
 }
 
 FReply SEditorConfigWidget::OnPushButtonClicked()
 {
-	LocalizeUtil * localizeUtil = Locate<LocalizeUtil>::Get();
-	if (localizeUtil->RecordsChanged.Num() == 0)
+	LocalizeUtil* localizeUtil = Locate<LocalizeUtil>::Get();
+	TArray<FRecord> RecordsToCommit;
+
+	if (pushOnlyChangedCheckbox.Get()->IsChecked())
+	{
+		RecordsToCommit = localizeUtil->RecordsChanged;
+	}
+	else
+	{
+		// Push all records
+		RecordsToCommit = FileChangeUtil::GetCurrentRecords();
+	}
+	if (RecordsToCommit.Num() == 0)
 	{
 		FMessageDialog::Open(EAppMsgType::Ok, FText::FromString(" No data to push to Wordbee."));
 		return FReply::Handled();
 	}
-	API::PushRecords(localizeUtil->RecordsChanged, FOnUpdateDocumentComplete::CreateLambda([](bool bSuccess, const int32& _ , const FString& message)
-	{
-		if (bSuccess)
-		{
-			FNotificationInfo Info(FText::FromString("Push data to Wordbee completed successfully."));
-			Info.bFireAndForget = true; // Set this to true so it automatically fades out
-			Info.ExpireDuration = 2.0f;  // How long it takes to fade out when closing
-
-			TSharedPtr<SNotificationItem> NotificationPtr = FSlateNotificationManager::Get().AddNotification(Info);
-			if (NotificationPtr.IsValid())
-			{
-				NotificationPtr->SetCompletionState(SNotificationItem::CS_Success);
-				NotificationPtr->ExpireAndFadeout();
-			}
-			
-			Locate<LocalizeUtil>::Get()->RecordsChanged.Empty();
-			FileChangeUtil::CopyLocalizeToSaved();
-		}
-		else
-		{
-			FMessageDialog::Open(EAppMsgType::Ok, FText::FromString("Failed to push data to Wordbee: " + message));
-		}
-	}));
 	
+	API::PushRecords(RecordsToCommit, FOnUpdateDocumentComplete::CreateLambda(
+		                 [](bool bSuccess, const int32& _, const FString& message)
+		                 {
+			                 if (bSuccess)
+			                 {
+				                 FNotificationInfo Info(
+					                 FText::FromString("Push data to Wordbee completed successfully."));
+				                 Info.bFireAndForget = true; // Set this to true so it automatically fades out
+				                 Info.ExpireDuration = 2.0f; // How long it takes to fade out when closing
+
+				                 TSharedPtr<SNotificationItem> NotificationPtr = FSlateNotificationManager::Get().
+					                 AddNotification(Info);
+				                 if (NotificationPtr.IsValid())
+				                 {
+					                 NotificationPtr->SetCompletionState(SNotificationItem::CS_Success);
+					                 NotificationPtr->ExpireAndFadeout();
+				                 }
+
+				                 Locate<LocalizeUtil>::Get()->RecordsChanged.Empty();
+				                 FileChangeUtil::CopyLocalizeToSaved();
+			                 }
+			                 else
+			                 {
+				                 FMessageDialog::Open(EAppMsgType::Ok,
+				                                      FText::FromString("Failed to push data to Wordbee: " + message));
+			                 }
+		                 }));
+
 	return FReply::Handled();
 }
 
@@ -564,46 +613,48 @@ void SEditorConfigWidget::FetchLangsFromAPI()
 	CommonLocales.Empty();
 	UserInfo = SingletonUtil::GetFromIni<FWordbeeUserData>();
 	API::FetchLanguages(UserInfo, [this](const TArray<FLanguageInfo>& Languages)
-	{
-		bIsFetching = false;
-		// Get available cultures in Unreal's localization system, include derived cultures
-		TArray<FString> UnrealLocales;
-		UnrealLocales = FTextLocalizationManager::Get().GetLocalizedCultureNames(ELocalizationLoadFlags::Game);
-		// Log Unreal locales
-		UE_LOG(LogTemp, Log, TEXT("Unreal Locales (Total: %d):"), UnrealLocales.Num());
-		for (const FString& UnrealLocale : UnrealLocales)
-		{
-			TSharedPtr<FCulture> Culture = FInternationalization::Get().GetCulture(UnrealLocale);
-			FString DisplayName = Culture.IsValid() ? Culture->GetDisplayName() : UnrealLocale;
-			// Check if Unreal's locale is missing in the API response
-			bool bIsMissing = !Languages.ContainsByPredicate([&UnrealLocale](const FLanguageInfo& Lang)
-			{
-				return Lang.V == UnrealLocale;
-			});
-			if (bIsMissing)
-			{
-				FLanguageInfo NewLang;
-				NewLang.V = UnrealLocale;
-				NewLang.T = DisplayName;
-				MissingLocales.Add(MakeShared<FLanguageInfo>(NewLang));
-			}
-			else
-			{
-				// If the language exists, add it to CommonLocales
-				FLanguageInfo CommonLang;
-				CommonLang.V = UnrealLocale;
-				CommonLang.T = DisplayName;
-				CommonLocales.Add(MakeShared<FLanguageInfo>(CommonLang));
-			}
-		}
-		CommonLocalesListView->RequestListRefresh();
-		MissingLocalesCbo->RefreshOptions();
-		ShowNotification("Languages reloaded successfully!", true);
-	}, [this](const FString& ErrorMessage)
-		{
-			bIsFetching = false; 
-			ShowNotification("Failed to reload languages: " + ErrorMessage, false);
-		});
+	                    {
+		                    bIsFetching = false;
+		                    // Get available cultures in Unreal's localization system, include derived cultures
+		                    TArray<FString> UnrealLocales;
+		                    UnrealLocales = FTextLocalizationManager::Get().GetLocalizedCultureNames(
+			                    ELocalizationLoadFlags::Game);
+		                    // Log Unreal locales
+		                    UE_LOG(LogTemp, Log, TEXT("Unreal Locales (Total: %d):"), UnrealLocales.Num());
+		                    for (const FString& UnrealLocale : UnrealLocales)
+		                    {
+			                    TSharedPtr<FCulture> Culture = FInternationalization::Get().GetCulture(UnrealLocale);
+			                    FString DisplayName = Culture.IsValid() ? Culture->GetDisplayName() : UnrealLocale;
+			                    // Check if Unreal's locale is missing in the API response
+			                    bool bIsMissing = !Languages.ContainsByPredicate(
+				                    [&UnrealLocale](const FLanguageInfo& Lang)
+				                    {
+					                    return Lang.V == UnrealLocale;
+				                    });
+			                    if (bIsMissing)
+			                    {
+				                    FLanguageInfo NewLang;
+				                    NewLang.V = UnrealLocale;
+				                    NewLang.T = DisplayName;
+				                    MissingLocales.Add(MakeShared<FLanguageInfo>(NewLang));
+			                    }
+			                    else
+			                    {
+				                    // If the language exists, add it to CommonLocales
+				                    FLanguageInfo CommonLang;
+				                    CommonLang.V = UnrealLocale;
+				                    CommonLang.T = DisplayName;
+				                    CommonLocales.Add(MakeShared<FLanguageInfo>(CommonLang));
+			                    }
+		                    }
+		                    CommonLocalesListView->RequestListRefresh();
+		                    MissingLocalesCbo->RefreshOptions();
+		                    ShowNotification("Languages reloaded successfully!", true);
+	                    }, [this](const FString& ErrorMessage)
+	                    {
+		                    bIsFetching = false;
+		                    ShowNotification("Failed to reload languages: " + ErrorMessage, false);
+	                    });
 }
 
 void SEditorConfigWidget::ShowNotification(const FString& Message, bool bSuccess)

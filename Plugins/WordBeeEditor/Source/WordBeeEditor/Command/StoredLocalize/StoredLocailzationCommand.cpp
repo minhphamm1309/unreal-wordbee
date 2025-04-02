@@ -161,6 +161,59 @@ bool StoredLocailzationCommand::AddCultureIfNotSupported(const FString& CultureC
 	return true;
 }
 
+void StoredLocailzationCommand::AddCultureToSupportedList(FString& InputString, const FString& NewCulture)
+{
+	FString StartPattern = TEXT("SupportedCulturesStatistics=(");
+	FString EndPattern = TEXT("))");
+
+	int32 StartIndex = InputString.Find(StartPattern) + StartPattern.Len();
+	int32 EndIndex = InputString.Find(EndPattern, ESearchCase::IgnoreCase, ESearchDir::FromStart, StartIndex);
+
+	if (StartIndex != INDEX_NONE && EndIndex != INDEX_NONE)
+	{
+		FString CultureSection = InputString.Mid(StartIndex, EndIndex - StartIndex);
+
+		if (!CultureSection.Contains(FString::Printf(TEXT("CultureName=\"%s\""), *NewCulture)))
+		{
+			if (CultureSection.IsEmpty())
+			{
+				CultureSection = FString::Printf(TEXT("(CultureName=\"%s\")"), *NewCulture);
+			}
+			else
+			{
+				CultureSection += FString::Printf(TEXT(",(CultureName=\"%s\")"), *NewCulture);
+			}
+			InputString = InputString.Left(StartIndex) + CultureSection + InputString.RightChop(EndIndex);
+		}
+	}
+}
+
+void StoredLocailzationCommand::AddLocalizationEntryIni(const FString& CultureCode)
+{
+	FString ConfigSection = TEXT("/Script/Localization.LocalizationSettings");
+	// Create a new FConfigFile to read from the custom INI file
+	FConfigFile ConfigFile;
+	const FString defaultEditorIni = FPaths::ProjectConfigDir() / TEXT("DefaultEditor.ini");
+	// Read the config file from disk
+	ConfigFile.Read(defaultEditorIni);
+
+	FString StrJsonObject;
+	TArray<FString> settings;
+	FString key = TEXT("+GameTargetsSettings");
+	
+	if (ConfigFile.GetString(*ConfigSection, *key, StrJsonObject))
+	{
+		AddCultureToSupportedList(StrJsonObject , CultureCode);
+		ConfigFile.SetString(*ConfigSection, *key, *StrJsonObject);
+		ConfigFile.Write(defaultEditorIni);
+		UE_LOG(LogTemp, Warning, TEXT("Add %s Done"), *CultureCode);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Fail %s"), *defaultEditorIni);
+	}
+}
+
 void StoredLocailzationCommand::AddLocalizationEntry(const TArray<FLocalizeSegment>& LocalizeSegments, FString CultureCode)
 {
 	FString OutputPath = FPaths::ProjectContentDir() / TEXT("Localization")/ TEXT("Wordbee") / CultureCode;
@@ -170,6 +223,7 @@ void StoredLocailzationCommand::AddLocalizationEntry(const TArray<FLocalizeSegme
 		FPlatformFileManager::Get().GetPlatformFile().CreateDirectory(*OutputPath);
 	}
 
+	AddLocalizationEntryIni(CultureCode);
 	
 	TSharedPtr<FJsonObject> RootObject = MakeShareable(new FJsonObject);
     RootObject->SetNumberField("FormatVersion", 2);
@@ -259,6 +313,9 @@ void StoredLocailzationCommand::GenerateLocalizationManifest(TArray<FLocalizatio
 	
 	FString OutputFilePath = OutputPath / TEXT("Wordbee.manifest");
 	FFileHelper::SaveStringToFile(OutputString, *OutputFilePath);
+
+	FString OutputFileConflictPath = OutputPath / TEXT("Wordbee_Conflicts.txt");
+	FFileHelper::SaveStringToFile(TEXT(""), *OutputFileConflictPath);
 }
 
 void StoredLocailzationCommand::CreateNewLocalizationTarget(const FString& Key)

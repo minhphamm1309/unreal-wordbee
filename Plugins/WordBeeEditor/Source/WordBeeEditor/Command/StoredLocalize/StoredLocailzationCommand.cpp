@@ -171,7 +171,7 @@ void StoredLocailzationCommand::AddCultureToSupportedList(FString& InputString, 
 
 	if (StartIndex != INDEX_NONE && EndIndex != INDEX_NONE)
 	{
-		FString CultureSection = InputString.Mid(StartIndex, EndIndex - StartIndex);
+		FString CultureSection = InputString.Mid(StartIndex, EndIndex - StartIndex + 1);
 
 		if (!CultureSection.Contains(FString::Printf(TEXT("CultureName=\"%s\""), *NewCulture)))
 		{
@@ -183,7 +183,8 @@ void StoredLocailzationCommand::AddCultureToSupportedList(FString& InputString, 
 			{
 				CultureSection += FString::Printf(TEXT(",(CultureName=\"%s\")"), *NewCulture);
 			}
-			InputString = InputString.Left(StartIndex) + CultureSection + InputString.RightChop(EndIndex);
+
+			InputString = InputString.Left(StartIndex) + CultureSection + InputString.RightChop(EndIndex + 1);
 		}
 	}
 }

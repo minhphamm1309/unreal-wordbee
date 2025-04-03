@@ -8,9 +8,9 @@ class FileChangeUtil
 {
 public:
 	static void FileChange(const FString& fileName);
-
+	static TArray<FRecord> GetCurrentRecords();
 	static FLocalizationData ParseLocalizationData(const FString& filePath);
 	static void UpdateRecord(const FRecord& Record);
-	static void UpdateDocumentData(const FDocumentData& Document, const FString& Key, const FString& langCode, const FString& Text);
+	static void UpdateDocumentData(FDocumentData& Document, const FString& Key, const FString& langCode, const FString& Text);
 	static void CopyLocalizeToSaved();
 };

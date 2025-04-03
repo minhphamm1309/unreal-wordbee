@@ -19,6 +19,7 @@ public:
 
 private:
 	FWordbeeUserData userinfo;
+	FSegment segment;
 	FString EnteredKey;
 	FText MinLength;
 	FText MaxLength;
@@ -45,4 +46,8 @@ private:
 	static void AddCustomFieldsFromSegment(const FWordbeeDocument& Doc, TArray<TSharedPtr<FCustomField>>& OutCustomFields);
 	void OnKeyChanged(const FText& NewText);
 	FReply OnGetDataClicked();
+	FReply OnUpdateClicked();
+	bool bIsUpdating = false;
+	bool bIsResetting = false;
+	void ResetData();
 };

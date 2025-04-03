@@ -673,6 +673,7 @@ void API::ExportSegment(FWordbeeUserData userInfo, FSegment segment, FOnUpdateDo
 	FString JsonBody;
 	TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&JsonBody);
 	FJsonSerializer::Serialize(Body.ToSharedRef(), Writer);
+	UE_LOG(LogTemp, Log, TEXT("ExportSegment: %s"), *JsonBody);
 	Request->SetContentAsString(JsonBody);
 	Request->OnProcessRequestComplete().BindLambda(
 		[userInfo, segment, bIsRetry,onCompleted](

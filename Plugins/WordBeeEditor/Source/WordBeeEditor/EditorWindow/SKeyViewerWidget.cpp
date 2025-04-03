@@ -36,10 +36,12 @@ void SKeyViewerWidget::Construct(const FArguments& InArgs)
 				             .ButtonStyle(FCoreStyle::Get(), "NoBorder") // No border for a cleaner look
 				             .OnClicked(this, &SKeyViewerWidget::OnGetDataClicked)
 				             .ToolTipText(FText::FromString("Get data"))
-				[
-					SNew(SImage)
-					.Image(FCoreStyle::Get().GetBrush("Icons.Refresh")) // Use a refresh icon
-				]
+							.Cursor(EMouseCursor::Hand)
+							.IsEnabled_Lambda([this]() { return !bIsResetting; }) // Disable if updating
+						[
+							SNew(SImage)
+							.Image(FCoreStyle::Get().GetBrush("Icons.Refresh")) // Use a refresh icon
+						]
 			]
 		]
 		+ SVerticalBox::Slot()
@@ -103,6 +105,10 @@ void SKeyViewerWidget::Construct(const FArguments& InArgs)
 		[
 			SNew(SButton)
 			.Text(FText::FromString("Update"))
+			.OnClicked(this, &SKeyViewerWidget::OnUpdateClicked)
+			.ToolTipText(FText::FromString("Update metadata to Wordbee"))
+			.Cursor(EMouseCursor::Hand)
+			.IsEnabled_Lambda([this]() { return !bIsUpdating; })
 		]
 	];
 }
@@ -240,29 +246,33 @@ void SKeyViewerWidget::OnKeyChanged(const FText& NewText)
 
 FReply SKeyViewerWidget::OnGetDataClicked()
 {
+	bIsResetting = true;
+	ResetData();
 	userinfo = SingletonUtil::GetFromIni<FWordbeeUserData>();
 	// Handle fetching data based on EnteredKey
 	API::PullDocument(userinfo, FString::FromInt(userinfo.DocumentId), FOnPullDocumentComplete::CreateLambda(
 		                  [this](FString Result)
       {
-          CustomFields.Empty();
           FWordbeeDocument doc;
           if (FJsonObjectConverter::JsonObjectStringToUStruct(Result, &doc, 0, CPF_Transient))
           {
-            if (doc.Segments.Num() < 0)
+            if (doc.Segments.Num() <= 0)
             {
+            	FMessageDialog::Open(EAppMsgType::Ok,FText::FromString("Key not valid"));
+            	bIsResetting = false;
                 return;
             }
-            MinLength = FText::AsNumber(doc.Segments[0].chmin);
-			  MaxLength = FText::AsNumber(doc.Segments[0].chmax);
-            
+            segment = doc.Segments[0];
+            MinLength = FText::AsNumber(segment.chmin);
+			  MaxLength = FText::AsNumber(segment.chmax);
+          		CustomFields.Empty();
               AddCustomFieldsFromSegment(doc, CustomFields);
-              UE_LOG(LogTemp, Log, TEXT("CustomFieldsCount: %d"), CustomFields.Num());
               if (CustomFieldsListView.IsValid())
               {
                   CustomFieldsListView->RequestListRefresh();
               }
           }
+		  bIsResetting = false;
       }
   ), {EnteredKey});
 	return FReply::Handled();
@@ -297,3 +307,46 @@ void SKeyViewerWidget::AddCustomFieldsFromSegment(const FWordbeeDocument& Doc,
 		OutCustomFields.Add(NewField);
 	}
 }
+
+FReply SKeyViewerWidget::OnUpdateClicked()
+{
+	if (EnteredKey.IsEmpty())
+	{
+		FMessageDialog::Open(EAppMsgType::Ok,FText::FromString("Key cannot be empty"));
+		return FReply::Handled();
+	}
+	bIsUpdating = true;
+	userinfo = SingletonUtil::GetFromIni<FWordbeeUserData>();
+    segment.chmin =  FCString::Atoi(*MinLength.ToString());
+    segment.chmax = FCString::Atoi(*MaxLength.ToString());
+	for (const TSharedPtr<FCustomField>& FieldPtr : CustomFields)
+	{
+		if (FieldPtr.IsValid()) // Ensure the pointer is valid
+		{
+			segment.Cfs.Add(*FieldPtr); // Dereference and add
+		}
+	}
+	API::UpdateSegment(userinfo, segment, FOnUpdateDocumentComplete::CreateLambda(
+		 [this](bool bSuccess, const int32& _, const FString& message)
+		 {
+			 if (bSuccess)
+			 {
+			 	FMessageDialog::Open(EAppMsgType::Ok,
+									  FText::FromString("Success: " + message));
+			 }
+			 else
+			 {
+				 FMessageDialog::Open(EAppMsgType::Ok,
+									  FText::FromString("Failed to push data to Wordbee: " + message));
+			 }
+		 	bIsUpdating = false;
+		 }));
+    return FReply::Handled();
+}
+void SKeyViewerWidget::ResetData()
+{
+	MinLength = FText::FromString(TEXT(""));
+	MaxLength = FText::FromString(TEXT(""));
+	CustomFields.Empty();
+}
+

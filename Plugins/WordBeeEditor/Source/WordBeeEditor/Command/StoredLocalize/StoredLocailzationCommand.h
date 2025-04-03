@@ -69,9 +69,13 @@ class StoredLocailzationCommand
 public:
 	static void Execute(const TArray<FSegment>& Segments);
 	static bool AddCultureIfNotSupported(const FString& CultureCode);
+	static void AddLocalizationEntryIni(const FString& String);
 	static  void AddLocalizationEntry(const TArray<FLocalizeSegment>& LocalizeSegments, FString CultureCode);
 	static FLocalizationTextEntryM ParseToManifest(const FString& Key, const FString& String);
 	static void GenerateLocalizationManifest(TArray<FLocalizationNamespaceM> Array);
 	static void CreateNewLocalizationTarget(const FString& Key);
 
+	static void AddCultureToSupportedList(FString& InputString, const FString& NewCulture);
+
 };
+

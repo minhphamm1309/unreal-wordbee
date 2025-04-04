@@ -5,6 +5,7 @@
 #include "Modules/ModuleManager.h"
 #include "WordBeeEditorModule.h"
 #include "Framework/MultiBox/MultiBoxBuilder.h"
+#include "WordBeeEditor/CronJobs/CronJobHandler.h"
 
 static const FName WordBeeConfigEditorTabName("WordBeeConfigEditorTab");
 static const FName WordBeeKeyViewerTabName("WordBeeKeyViewerTab");
@@ -33,6 +34,8 @@ public:
 	void OnWorkFlowStatusClick();
 	void SyncLocalizationFileChanged(const FString& filePath);
 	FDelegateHandle WatcherHandle;
+private:
+	CronJobHandler CronJob = CronJobHandler();
 };
 
 IMPLEMENT_MODULE(FWordBeeEditorModule, MyEditor)

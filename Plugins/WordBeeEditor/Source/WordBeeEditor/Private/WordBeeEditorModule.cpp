@@ -2,16 +2,12 @@
 
 #include "DirectoryWatcherModule.h"
 #include "IDirectoryWatcher.h"
-#include "JsonObjectConverter.h"
 #include "WordBeeEditor/Command/CreateDataAsset/CreateConfigDataAssetCommand.h"
 #include "WordBeeEditor/Command/CreateDataAsset/CreateUserDataAssetCommand.h"
+#include "WordBeeEditor/CronJobs/CronJobHandler.h"
 #include "WordBeeEditor/EditorWindow/SKeyViewerWidget.h"
 #include "WordBeeEditor/EditorWindow/SWorkFlowStatus.h"
 #include "WordBeeEditor/EditorWindow/WordBeeEditorConfigWindow.h"
-#include "WordBeeEditor/Models/FDocumentData.h"
-#include "WordBeeEditor/Models/WordbeeResponse.h"
-#include "WordBeeEditor/Models/WordbeeUserData.h"
-#include "WordBeeEditor/Utils/APIConstant.h"
 #include "WordBeeEditor/Utils/FileChangeUtil.h"
 #include "WordBeeEditor/Utils/LocalizeUtil.h"
 #include "WordBeeEditor/Utils/SingletonUtil.h"
@@ -27,13 +23,12 @@ void FWordBeeEditorModule::StartupModule()
 	FGlobalTabmanager::Get()->RegisterNomadTabSpawner(WorkFlowStatusTabName, FOnSpawnTab::CreateRaw(this, &FWordBeeEditorModule::OnSpawnWorkFlowStatusTab))
 				.SetDisplayName(FText::FromString("Workflow Status Window"))
 				.SetMenuType(ETabSpawnerMenuType::Hidden);
-
 	// Optionally, add a menu entry
 	UToolMenus::RegisterStartupCallback(FSimpleMulticastDelegate::FDelegate::CreateRaw(this, &FWordBeeEditorModule::RegisterMenus));
-
 	Locate<LocalizeUtil>::Set(new LocalizeUtil());
 	StartWatcherLocalization();
 	UE_LOG(LogTemp, Log, TEXT("WordBeeEditor: Successfully started up module!"));
+	CronJob.StartSyncTimer();
 }
 
 void FWordBeeEditorModule::StartWatcherLocalization()
@@ -84,6 +79,7 @@ void FWordBeeEditorModule::ShutdownModule()
 	StopWatcherLocalization();
 	Locate<LocalizeUtil>::Clear();
 	FGlobalTabmanager::Get()->UnregisterNomadTabSpawner(WordBeeConfigEditorTabName);
+	CronJob.ShutDownTick();
 }
 
 TSharedRef<SDockTab> FWordBeeEditorModule::OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs)
@@ -116,14 +112,6 @@ void FWordBeeEditorModule::RegisterMenus()
 	FToolMenuOwnerScoped OwnerScoped(this);
 	UToolMenu* Menu = UToolMenus::Get()->ExtendMenu("LevelEditor.MainMenu.Tools");
 	FToolMenuSection& Section = Menu->AddSection("CustomTools", FText::FromString("Custom Tools"));
-	// Section.AddMenuEntry(
-	// 	"WordBeeConfigEditorTab",
-	// 	FText::FromString("Configure"),
-	// 	FText::FromString("Open the WordBee Config Editor"),
-	// 	FSlateIcon(),
-	// 	FUIAction(FExecuteAction::CreateRaw(this, &FWordBeeEditorModule::OnMenuButtonClicked))
-	// );
-
 	// Add a submenu called "WordBee Link"
 	Section.AddSubMenu(
 		"WordBeeLinkSubmenu",  // Unique name for the submenu
@@ -177,3 +165,5 @@ void FWordBeeEditorModule::SyncLocalizationFileChanged(const FString& fileChange
 {
 	FileChangeUtil::FileChange(fileChanged);
 }
+
+

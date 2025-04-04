@@ -1,18 +1,11 @@
 #include "SEditorConfigWidget.h"
-
-#include "DirectoryWatcherModule.h"
-#include "IDirectoryWatcher.h"
-#include "LocalizationSettings.h"
-#include "PropertyCustomizationHelpers.h"
 #include "Framework/Notifications/NotificationManager.h"
 #include "Styling/AppStyle.h"  // Replaces FEditorStyle for UE5 compatibility
 #include "WordbeeEditor/API/API.h"
-#include "Internationalization/StringTable.h"
 #include "Internationalization/Culture.h"
 #include "Internationalization/Internationalization.h"
 #include "Widgets/Notifications/SNotificationList.h"
 #include "WordBeeEditor/Command/CreateDataAsset/SUserData.h"
-#include "WordBeeEditor/Command/DocumentList/FDocumentDataResponse.h"
 #include "WordBeeEditor/Command/LinkProject/ULinkDocumentCommand.h"
 #include "WordBeeEditor/Command/StoredLocalize/StoredLocailzationCommand.h"
 #include "WordBeeEditor/Models/FDocumentData.h"
@@ -468,17 +461,14 @@ FReply SEditorConfigWidget::OnCPullButtonClicked()
 			SelectedLanguages.Add(Lang->V);
 		}
 	}
-
 	if (SelectedLanguages.Num() == 0)
 	{
 		FMessageDialog::Open(EAppMsgType::Ok, FText::FromString("you must select at least one language."));
 		return FReply::Handled();
 	}
-
 	const int32 TotalSteps = 100; // Example step count
 	FScopedSlowTask SlowTask(TotalSteps, FText::FromString(TEXT("Processing... Please wait.")));
 	SlowTask.MakeDialog();
-
 	FWordbeeUserData userInfo = SingletonUtil::GetFromIni<FWordbeeUserData>();
 	ULinkDocumentCommand::Execute(userInfo, FString::FromInt(userInfo.DocumentId),
 	                              FOnLinkDocumentComplete::CreateLambda(
@@ -612,48 +602,41 @@ void SEditorConfigWidget::FetchLangsFromAPI()
 	CommonLocales.Empty();
 	UserInfo = SingletonUtil::GetFromIni<FWordbeeUserData>();
 	API::FetchLanguages(UserInfo, [this](const TArray<FLanguageInfo>& Languages)
-	                    {
-		                    bIsFetching = false;
-		                    // Get available cultures in Unreal's localization system, include derived cultures
-		                    TArray<FString> UnrealLocales;
-		                    UnrealLocales = FTextLocalizationManager::Get().GetLocalizedCultureNames(
-			                    ELocalizationLoadFlags::Game);
-		                    // Log Unreal locales
-		                    UE_LOG(LogTemp, Log, TEXT("Unreal Locales (Total: %d):"), UnrealLocales.Num());
-		                    for (const FString& UnrealLocale : UnrealLocales)
-		                    {
-			                    TSharedPtr<FCulture> Culture = FInternationalization::Get().GetCulture(UnrealLocale);
-			                    FString DisplayName = Culture.IsValid() ? Culture->GetDisplayName() : UnrealLocale;
-			                    // Check if Unreal's locale is missing in the API response
-			                    bool bIsMissing = !Languages.ContainsByPredicate(
-				                    [&UnrealLocale](const FLanguageInfo& Lang)
-				                    {
-					                    return Lang.V == UnrealLocale;
-				                    });
-			                    if (bIsMissing)
-			                    {
-				                    FLanguageInfo NewLang;
-				                    NewLang.V = UnrealLocale;
-				                    NewLang.T = DisplayName;
-				                    MissingLocales.Add(MakeShared<FLanguageInfo>(NewLang));
-			                    }
-			                    else
-			                    {
-				                    // If the language exists, add it to CommonLocales
-				                    FLanguageInfo CommonLang;
-				                    CommonLang.V = UnrealLocale;
-				                    CommonLang.T = DisplayName;
-				                    CommonLocales.Add(MakeShared<FLanguageInfo>(CommonLang));
-			                    }
-		                    }
-		                    CommonLocalesListView->RequestListRefresh();
-		                    MissingLocalesCbo->RefreshOptions();
-		                    ShowNotification("Languages reloaded successfully!", true);
-	                    }, [this](const FString& ErrorMessage)
-	                    {
-		                    bIsFetching = false;
-		                    ShowNotification("Failed to reload languages: " + ErrorMessage, false);
-	                    });
+    {
+        bIsFetching = false;
+        TArray<FString> UnrealLocales;
+        UnrealLocales = FTextLocalizationManager::Get().GetLocalizedCultureNames(
+            ELocalizationLoadFlags::Engine);
+        for (const FString& UnrealLocale : UnrealLocales)
+        {
+            TSharedPtr<FCulture> Culture = FInternationalization::Get().GetCulture(UnrealLocale);
+            FString DisplayName = Culture.IsValid() ? Culture->GetDisplayName() : UnrealLocale;
+            // Check if Unreal's locale is missing in the API response
+            bool bIsMissing = !Languages.ContainsByPredicate(
+                [&UnrealLocale](const FLanguageInfo& Lang)
+                {
+                    return Lang.V == UnrealLocale;
+                });
+            if (bIsMissing)
+            {
+                FLanguageInfo NewLang;
+                NewLang.V = UnrealLocale;
+                NewLang.T = DisplayName;
+                MissingLocales.Add(MakeShared<FLanguageInfo>(NewLang));
+            }
+        }
+		for (const FLanguageInfo& WbLocale : Languages)
+        {
+			CommonLocales.Add(MakeShared<FLanguageInfo>(WbLocale));
+		}
+        CommonLocalesListView->RequestListRefresh();
+        MissingLocalesCbo->RefreshOptions();
+        ShowNotification("Languages reloaded successfully!", true);
+    }, [this](const FString& ErrorMessage)
+    {
+        bIsFetching = false;
+        ShowNotification("Failed to reload languages: " + ErrorMessage, false);
+    });
 }
 
 void SEditorConfigWidget::ShowNotification(const FString& Message, bool bSuccess)

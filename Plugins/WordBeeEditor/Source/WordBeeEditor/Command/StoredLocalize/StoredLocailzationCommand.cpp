@@ -18,20 +18,16 @@ void StoredLocailzationCommand::Execute( const TArray<FSegment>& Segments)
 			languagesCodeUnique.AddUnique(localizeSegment.Key);
 		}
 	}
-
 	// init data
 	TArray<FLocalizationNamespaceM> Namespaces;
-    
 	FLocalizationNamespaceM StringTableNamespace;
 	StringTableNamespace.Namespace = "Wordbee";
-	
 	TMap<FString, TArray<FLocalizeSegment>> LocalizeSegments;
 	for (const FSegment& Segment : Segments)
 	{
 		FSegmentText sourceEn = Segment.texts.FindChecked("en");
 		FString sourceText = sourceEn.v;
 		StringTableNamespace.Children.Add(ParseToManifest(Segment.key, sourceText));
-		
 		for (const auto& LocalizeSegment : Segment.texts)
 		{
 			FLocalizeSegment LocalizeSegmentData;
@@ -43,12 +39,9 @@ void StoredLocailzationCommand::Execute( const TArray<FSegment>& Segments)
 		}
 	}
 	Namespaces.Add(StringTableNamespace);
-
 	CreateNewLocalizationTarget(TEXT("Wordbee"));
-
 	// Create the localization manifest
 	GenerateLocalizationManifest(Namespaces);
-	
 	// Create the localization settings
 	for (const auto& LanguageCode : languagesCodeUnique)
 	{
@@ -56,24 +49,20 @@ void StoredLocailzationCommand::Execute( const TArray<FSegment>& Segments)
 		TArray<FLocalizeSegment> LocalizeSegmentsData = LocalizeSegments.FindChecked(LanguageCode);
 		AddLocalizationEntry(LocalizeSegmentsData, LanguageCode);
 	}
-	
 }
 
 bool StoredLocailzationCommand::AddCultureIfNotSupported(const FString& CultureCode)
 {
     // Get the internationalization subsystem
     FInternationalization& I18N = FInternationalization::Get();
-    
     // Verify the culture exists
     TArray<FString> AvailableCultureNames;
     I18N.GetCultureNames(AvailableCultureNames);
-    
     if (!AvailableCultureNames.Contains(CultureCode))
     {
         UE_LOG(LogTemp, Warning, TEXT("Culture code %s is not available"), *CultureCode);
         return false;
     }
-
 	// 2. Get the localization settings
 	ULocalizationSettings* const LocalizationSettings = GetMutableDefault<ULocalizationSettings>();
 	if (!LocalizationSettings)
@@ -111,24 +100,11 @@ bool StoredLocailzationCommand::AddCultureIfNotSupported(const FString& CultureC
 			ConfigFile->Write(GEngineIni);
 		}
 	}
-
-	// 4. Add to active cultures
-	// TArray<FString> CurrentActiveCultures;
-	// I18N.GetCurrentCulture()->GetCul(CurrentActiveCultures);
- //    
-	// if (!CurrentActiveCultures.Contains(CultureCode))
-	// {
-	// 	CurrentActiveCultures.Add(CultureCode);
-	// 	I18N.SetCurrentCulture(CurrentActiveCultures);
-	// }
-
 	// 5. Add to all localization targets (using correct UE5 method)
 	bool bModifiedAnyTarget = false;
-    
 	// Get the target set from settings
 	ULocalizationTargetSet* EngineTargetSet = LocalizationSettings->GetEngineTargetSet();
 	ULocalizationTargetSet* GameTargetSet = LocalizationSettings->GetGameTargetSet();
-
 	// Helper lambda to add culture to a target set
 	auto AddCultureToTargetSet = [&](ULocalizationTargetSet* TargetSet)
 	{

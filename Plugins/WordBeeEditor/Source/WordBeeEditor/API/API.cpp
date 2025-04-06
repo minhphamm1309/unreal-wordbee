@@ -9,6 +9,7 @@
 #include "Json.h"
 #include "Misc/MessageDialog.h"  // For showing messages in the editor
 #include "WordBeeEditor/Models/FDocumentData.h"
+#include "WordBeeEditor/Models/FEditorConfig.h"
 #include "WordbeeEditor/Models/WordbeeResponse.h"
 #include "WordBeeEditor/Utils/APIConstant.h"
 #include "WordBeeEditor/Utils/SingletonUtil.h"
@@ -24,6 +25,8 @@ const FString API::ROUTER_DOCUMENT_POOLING = "api/trm/status?requestid={0}";
 const FString API::ROUTER_PROJECT_LOCALES = "api/projects/{0}/locales";
 const FString API::ROUTER_WORKFLOW = "api/apps/wbflex/documents/{0}/workflow/status";
 const FString API::ROUTER_DOCUMENT_UPDATE = "api/apps/wbflex/documents/{0}/contents/push";
+const double API::Interval = 5.0f;
+const int32 API::MaxRetries = 360;
 
 void API::Authenticate(FString AccountId, FString ApiKey, FString BaseUrl, FOnAuthCompleted callback)
 {
@@ -174,14 +177,16 @@ void API::PullDocument(FWordbeeUserData userInfo, const FString& DocumentId, FOn
 	Request->SetVerb(TEXT("POST"));
 
 	Request->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
-	Request->SetHeader(TEXT("X-Auth-AccountId"), userInfo.AccountId);
-	Request->SetHeader(TEXT("X-Auth-Token"), userInfo.AuthToken);
+	Request->SetHeader(APIConstant::AuthAccountID, userInfo.AccountId);
+	Request->SetHeader(APIConstant::AuthToken, userInfo.AuthToken);
 
+	FEditorConfig Config = SingletonUtil::GetFromIni<FEditorConfig>();
 	// Create JSON body
 	TSharedPtr<FJsonObject> RequestJson = MakeShareable(new FJsonObject());
 	RequestJson->SetBoolField("includeComments", true);
 	RequestJson->SetBoolField("includeCustomFields", true);
 	RequestJson->SetBoolField("copySourceToTarget", false);
+	// RequestJson->SetStringField("excludeTexts", Config.TargetSynchronization);
 
 	// Convert the Keys array to a JSON array
 	if (Keys.Num() > 0)
@@ -320,9 +325,6 @@ void API::ExportRecords(const int32& documentId, TArray<FRecord> Records, FOnUpd
 	Body->SetArrayField(TEXT("segments"), SegmentsArray);
 
 	FString JsonBody;
-	TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&JsonBody);
-	FJsonSerializer::Serialize(Body.ToSharedRef(), Writer);
-
 	Request->SetContentAsString(JsonBody);
 	Request->OnProcessRequestComplete().BindLambda(
 		[documentId, Records, TargetRecord, TargetCol, bIsRetry,onCompleted](
@@ -397,8 +399,7 @@ void API::PushRecords(TArray<FRecord> Records, FOnUpdateDocumentComplete onCompl
 
 void API::CheckStatus(FWordbeeUserData userInfo, int32 RequestId, int32 RetryCount, FOnPullDocumentComplete callback)
 {
-	const int32 MaxRetries = 15; // Stop checking after 15 retries (~30 seconds)
-	if (RequestId == 0 || RetryCount >= MaxRetries)
+	if (RequestId == 0 || RetryCount >= 15)
 	{
 		UE_LOG(LogTemp, Error, TEXT("Status check timed out or invalid request ID."));
 		callback.ExecuteIfBound("");
@@ -445,7 +446,6 @@ void API::CheckStatus(FWordbeeUserData userInfo, int32 RequestId, int32 RetryCou
 
 void API::CheckStatus(int32 RequestId, int32 RetryCount, FOnCheckStatusComplete callback)
 {
-	const int32 MaxRetries = 15; // Stop checking after 15 retries (~30 seconds)
 	if (RequestId == 0 || RetryCount >= MaxRetries)
 	{
 		UE_LOG(LogTemp, Error, TEXT("Status check timed out or invalid request ID."));
@@ -479,7 +479,7 @@ void API::CheckStatus(int32 RequestId, int32 RetryCount, FOnCheckStatusComplete 
 				}
 				else
 				{
-					FPlatformProcess::Sleep(2.0f); // Wait before retrying
+					FPlatformProcess::Sleep(Interval); // Wait before retrying
 					CheckStatus(RequestId, RetryCount + 1, callback); // Increment retry count
 				}
 			}

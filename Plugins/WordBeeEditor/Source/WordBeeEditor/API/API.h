@@ -26,6 +26,8 @@ public :
 	static const FString ROUTER_PROJECT_LOCALES;
 	static const FString ROUTER_WORKFLOW;
 	static const FString ROUTER_DOCUMENT_UPDATE;
+	static const double Interval;
+	static const int32 MaxRetries;
 public:
 	static  void Authenticate(FString AccountId, FString ApiKey, FString BaseUrl, FOnAuthCompleted callback);
 	static FString ConstructUrl(FString AccountId, FString BaseUrl, FString Router);

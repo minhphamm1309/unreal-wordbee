@@ -1,12 +1,17 @@
 #include "DocumentService.h"
 
+#include "WordBeeEditor/API/API.h"
 #include "WordBeeEditor/Command/LinkProject/ULinkDocumentCommand.h"
 #include "WordBeeEditor/Command/StoredLocalize/StoredLocailzationCommand.h"
 #include "WordBeeEditor/Models/WordbeeUserData.h"
 #include "WordBeeEditor/Utils/FileChangeUtil.h"
 #include "WordBeeEditor/Utils/LocalizeUtil.h"
+#include "Framework/Notifications/NotificationManager.h"
+#include "Widgets/Notifications/SNotificationList.h"
+#include "Internationalization/Text.h"
 
-void DocumentService::PullDocument(TSharedPtr<TArray<FString>> SelectedLanguages)
+
+void DocumentService::PullDocument(TSharedPtr<TArray<FString>> SelectedLanguages, FString src)
 {
 	if (SelectedLanguages && SelectedLanguages->Num() == 0)
 	{
@@ -17,7 +22,7 @@ void DocumentService::PullDocument(TSharedPtr<TArray<FString>> SelectedLanguages
 	FWordbeeUserData userInfo = SingletonUtil::GetFromIni<FWordbeeUserData>();
 	ULinkDocumentCommand::Execute(userInfo, FString::FromInt(userInfo.DocumentId),
   FOnLinkDocumentComplete::CreateLambda(
-	  [SlowTask, SelectedLanguages](bool bSuccess, const FWordbeeDocument& document)
+	  [SlowTask, SelectedLanguages, src](bool bSuccess, const FWordbeeDocument& document)
 	  {
 		  if (bSuccess)
 		  {
@@ -27,7 +32,7 @@ void DocumentService::PullDocument(TSharedPtr<TArray<FString>> SelectedLanguages
 				  document, documentData.projectId, documentData.projectName,
 				  documentData.documentName);
 			  SlowTask->EnterProgressFrame(1, FText::FromString(TEXT("Import to Localization...")));
-			  StoreData(SelectedLanguages);
+			  StoreData(SelectedLanguages, src);
 			  Locate<LocalizeUtil>::Get()->RecordsChanged.Empty();
 			  FileChangeUtil::CopyLocalizeToSaved();
 			  SlowTask->EnterProgressFrame(1, FText::FromString(TEXT("Finished!")));
@@ -39,7 +44,7 @@ void DocumentService::PullDocument(TSharedPtr<TArray<FString>> SelectedLanguages
 	  }));
 }
 
-void DocumentService::StoreData(TSharedPtr<TArray<FString>> SelectedLanguages)
+void DocumentService::StoreData(TSharedPtr<TArray<FString>> SelectedLanguages, FString src)
 {
 	FDocumentData document = SingletonUtil::GetFromIni<FDocumentData>();
 	TArray<FSegment> segments;
@@ -60,6 +65,52 @@ void DocumentService::StoreData(TSharedPtr<TArray<FString>> SelectedLanguages)
 	}
 	if (segments.Num() > 0)
 	{
-		StoredLocailzationCommand::Execute(segments);
+		StoredLocailzationCommand::Execute(segments, src);
 	}
+}
+
+void DocumentService::PushDocument(TSharedPtr<TArray<FString>> SelectedLanguages, bool IsChangesOnly)
+{
+	LocalizeUtil* localizeUtil = Locate<LocalizeUtil>::Get();
+	TArray<FRecord> RecordsToCommit = IsChangesOnly? localizeUtil->RecordsChanged : FileChangeUtil::GetCurrentRecords();
+	// for (FRecord& Record : RecordsToCommit)
+	// {
+	// 	// Remove columns where columnID does not exist in SelectedLanguages
+	// 	Record.columns.RemoveAll([&SelectedLanguages](const FColumn& Column)
+	// 	{
+	// 		return !SelectedLanguages->Contains(Column.columnID);
+	// 	});
+	// }
+	if (RecordsToCommit.Num() == 0)
+	{
+		FMessageDialog::Open(EAppMsgType::Ok, FText::FromString(" No data to push to Wordbee."));
+		return;
+	}
+	API::PushRecords(RecordsToCommit, FOnUpdateDocumentComplete::CreateLambda(
+	 [](bool bSuccess, const int32& _, const FString& message)
+	 {
+		 if (bSuccess)
+		 {
+			 FNotificationInfo Info(
+				 FText::FromString("Push data to Wordbee completed successfully."));
+			 Info.bFireAndForget = true; // Set this to true so it automatically fades out
+			 Info.ExpireDuration = 2.0f; // How long it takes to fade out when closing
+
+			 TSharedPtr<SNotificationItem> NotificationPtr = FSlateNotificationManager::Get().
+				 AddNotification(Info);
+			 if (NotificationPtr.IsValid())
+			 {
+				 NotificationPtr->SetCompletionState(SNotificationItem::CS_Success);
+				 NotificationPtr->ExpireAndFadeout();
+			 }
+
+			 Locate<LocalizeUtil>::Get()->RecordsChanged.Empty();
+			 FileChangeUtil::CopyLocalizeToSaved();
+		 }
+		 else
+		 {
+			 FMessageDialog::Open(EAppMsgType::Ok,
+								  FText::FromString("Failed to push data to Wordbee: " + message));
+		 }
+	 }));
 }

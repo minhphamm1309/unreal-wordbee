@@ -67,7 +67,7 @@ struct FLocalizationNamespaceM
 class StoredLocailzationCommand
 {
 public:
-	static void Execute(const TArray<FSegment>& Segments);
+	static void Execute(const TArray<FSegment>& Segments, FString src="en");
 	static bool AddCultureIfNotSupported(const FString& CultureCode);
 	static void AddLocalizationEntryIni(const FString& String);
 	static  void AddLocalizationEntry(const TArray<FLocalizeSegment>& LocalizeSegments, FString CultureCode);

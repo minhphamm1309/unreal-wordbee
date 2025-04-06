@@ -6,9 +6,6 @@
 #include "Internationalization/Internationalization.h"
 #include "Widgets/Notifications/SNotificationList.h"
 #include "WordBeeEditor/Command/CreateDataAsset/SUserData.h"
-#include "WordBeeEditor/Command/LinkProject/ULinkDocumentCommand.h"
-#include "WordBeeEditor/Command/StoredLocalize/StoredLocailzationCommand.h"
-#include "WordBeeEditor/Models/FDocumentData.h"
 #include "WordBeeEditor/Models/FRecord.h"
 #include "WordBeeEditor/Service/DocumentService.h"
 #include "WordBeeEditor/Utils/FileChangeUtil.h"
@@ -400,20 +397,28 @@ FReply SEditorConfigWidget::OnCPullButtonClicked()
 {
 	// Create the shared pointer directly
 	TSharedPtr<TArray<FString>> SelectedLanguages = MakeShared<TArray<FString>>();
-
+	FString srcCode;
 	for (const TSharedPtr<FLanguageInfo>& Lang : CommonLocales)
 	{
-		if (Lang.IsValid() && Lang->IsSelected)
+		if (Lang.IsValid())
 		{
-			SelectedLanguages->Add(Lang->V);
+			if (Lang->Src=="true")
+			{
+				srcCode = Lang->V;
+				SelectedLanguages->Add(srcCode);
+			}
+			else if (Lang->IsSelected)
+			{
+				SelectedLanguages->Add(Lang->V);
+			}
 		}
 	}
-	if (SelectedLanguages->Num() == 0)
+	if (SelectedLanguages->Num() < 2)
 	{
 		FMessageDialog::Open(EAppMsgType::Ok, FText::FromString("You must select at least one language."));
 		return FReply::Handled();
 	}
-	DocumentService::PullDocument(SelectedLanguages);
+	DocumentService::PullDocument(SelectedLanguages, srcCode);
 	return FReply::Handled();
 }
 
@@ -422,7 +427,6 @@ FReply SEditorConfigWidget::OnPushButtonClicked()
 {
 	LocalizeUtil* localizeUtil = Locate<LocalizeUtil>::Get();
 	TArray<FRecord> RecordsToCommit;
-
 	if (pushOnlyChangedCheckbox.Get()->IsChecked())
 	{
 		RecordsToCommit = localizeUtil->RecordsChanged;

@@ -7,7 +7,7 @@
 #include "GeometryCollection/Facades/CollectionPositionTargetFacade.h"
 #include "HAL/PlatformFilemanager.h"
 
-void StoredLocailzationCommand::Execute( const TArray<FSegment>& Segments)
+void StoredLocailzationCommand::Execute( const TArray<FSegment>& Segments, FString src)
 {
 	// Get Locate codes
 	TArray<FString> languagesCodeUnique;
@@ -25,7 +25,7 @@ void StoredLocailzationCommand::Execute( const TArray<FSegment>& Segments)
 	TMap<FString, TArray<FLocalizeSegment>> LocalizeSegments;
 	for (const FSegment& Segment : Segments)
 	{
-		FSegmentText sourceEn = Segment.texts.FindChecked("en");
+		FSegmentText sourceEn = Segment.texts.FindChecked(src);
 		FString sourceText = sourceEn.v;
 		StringTableNamespace.Children.Add(ParseToManifest(Segment.key, sourceText));
 		for (const auto& LocalizeSegment : Segment.texts)

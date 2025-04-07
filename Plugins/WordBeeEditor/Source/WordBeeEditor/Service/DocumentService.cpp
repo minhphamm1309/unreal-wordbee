@@ -1,5 +1,6 @@
 #include "DocumentService.h"
 
+#include "Algo/AllOf.h"
 #include "WordBeeEditor/API/API.h"
 #include "WordBeeEditor/Command/LinkProject/ULinkDocumentCommand.h"
 #include "WordBeeEditor/Command/StoredLocalize/StoredLocailzationCommand.h"
@@ -73,44 +74,58 @@ void DocumentService::PushDocument(TSharedPtr<TArray<FString>> SelectedLanguages
 {
 	LocalizeUtil* localizeUtil = Locate<LocalizeUtil>::Get();
 	TArray<FRecord> RecordsToCommit = IsChangesOnly? localizeUtil->RecordsChanged : FileChangeUtil::GetCurrentRecords();
-	// for (FRecord& Record : RecordsToCommit)
-	// {
-	// 	// Remove columns where columnID does not exist in SelectedLanguages
-	// 	Record.columns.RemoveAll([&SelectedLanguages](const FColumn& Column)
-	// 	{
-	// 		return !SelectedLanguages->Contains(Column.columnID);
-	// 	});
-	// }
-	if (RecordsToCommit.Num() == 0)
+	for (FRecord& Record : RecordsToCommit)
+	{
+		// Remove columns where columnID does not exist in SelectedLanguages
+		Record.columns.RemoveAll([&SelectedLanguages](const FColumn& Column)
+		{
+			return !SelectedLanguages->Contains(Column.columnID);
+		});
+	}
+	bool bAllEmpty = Algo::AllOf(RecordsToCommit, [](const FRecord& Record)
+	{
+		return Record.columns.Num() == 0;
+	});
+	if (bAllEmpty)
 	{
 		FMessageDialog::Open(EAppMsgType::Ok, FText::FromString(" No data to push to Wordbee."));
 		return;
 	}
+	FNotificationInfo LoadingInfo(FText::FromString("Pushing data to Wordbee..."));
+	LoadingInfo.bFireAndForget = false;
+	LoadingInfo.FadeOutDuration = 0.5f;
+	LoadingInfo.ExpireDuration = 0.0f;
+	LoadingInfo.bUseThrobber = true;
+	LoadingInfo.bUseSuccessFailIcons = false;
+	TSharedPtr<SNotificationItem> LoadingNotification = FSlateNotificationManager::Get().AddNotification(LoadingInfo);
+	if (LoadingNotification.IsValid())
+	{
+		LoadingNotification->SetCompletionState(SNotificationItem::CS_Pending);
+	}
 	API::PushRecords(RecordsToCommit, FOnUpdateDocumentComplete::CreateLambda(
-	 [](bool bSuccess, const int32& _, const FString& message)
+	 [LoadingNotification](bool bSuccess, const int32& _, const FString& message)
 	 {
-		 if (bSuccess)
-		 {
-			 FNotificationInfo Info(
-				 FText::FromString("Push data to Wordbee completed successfully."));
-			 Info.bFireAndForget = true; // Set this to true so it automatically fades out
-			 Info.ExpireDuration = 2.0f; // How long it takes to fade out when closing
-
-			 TSharedPtr<SNotificationItem> NotificationPtr = FSlateNotificationManager::Get().
-				 AddNotification(Info);
-			 if (NotificationPtr.IsValid())
-			 {
-				 NotificationPtr->SetCompletionState(SNotificationItem::CS_Success);
-				 NotificationPtr->ExpireAndFadeout();
-			 }
-
+	 	if (bSuccess)
+	 	{
 			 Locate<LocalizeUtil>::Get()->RecordsChanged.Empty();
 			 FileChangeUtil::CopyLocalizeToSaved();
-		 }
-		 else
-		 {
+	 		if (LoadingNotification.IsValid())
+	 		{
+				 LoadingNotification->SetText(FText::FromString("Push to Wordbee completed."));
+				 LoadingNotification->SetCompletionState(SNotificationItem::CS_Success);
+				 LoadingNotification->ExpireAndFadeout();
+			 }
+	 	}
+	 	else
+	 	{
+	 		if (LoadingNotification.IsValid())
+	 		{
+				 LoadingNotification->SetText(FText::FromString("Failed to push to Wordbee."));
+				 LoadingNotification->SetCompletionState(SNotificationItem::CS_Fail);
+				 LoadingNotification->ExpireAndFadeout();
+			 }
 			 FMessageDialog::Open(EAppMsgType::Ok,
 								  FText::FromString("Failed to push data to Wordbee: " + message));
-		 }
+	 	}
 	 }));
 }

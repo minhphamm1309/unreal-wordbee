@@ -70,7 +70,7 @@ void SEditorConfigWidget::Construct(const FArguments& InArgs)
 				  .VAlign(VAlign_Center)
 				[
 					SNew(STextBlock)
-					.Text(FText::FromString("Sync Interval (seconds):"))
+					.Text(FText::FromString("Sync Interval (min):"))
 					.Font(FAppStyle::Get().GetFontStyle("NormalFont"))
 				]
 
@@ -81,13 +81,13 @@ void SEditorConfigWidget::Construct(const FArguments& InArgs)
 				.VAlign(VAlign_Center)
 				[
 					SNew(SEditableTextBox)
-					                      .Text(FText::AsNumber(Config.SyncIntervalSeconds))
-					                      .IsEnabled_Lambda([this]()
-					                      {
-						                      return Config.bAutoSyncEnabled;
-					                      }) // Dynamic update
-					                      .OnTextCommitted(this, &SEditorConfigWidget::OnSyncIntervalChanged)
-					                      .HintText(FText::FromString("Enter seconds"))
+		                  .Text(FText::AsNumber(Config.SyncIntervalSeconds/60))
+		                  .IsEnabled_Lambda([this]()
+		                  {
+		                      return Config.bAutoSyncEnabled;
+		                  }) // Dynamic update
+		                  .OnTextCommitted(this, &SEditorConfigWidget::OnSyncIntervalChanged)
+		                  .HintText(FText::FromString("Enter seconds"))
 				]
 			]
 
@@ -346,7 +346,13 @@ void SEditorConfigWidget::OnAutoSyncChanged(ECheckBoxState NewState)
 
 void SEditorConfigWidget::OnSyncIntervalChanged(const FText& NewText, ETextCommit::Type CommitType)
 {
-	Config.SyncIntervalSeconds = FCString::Atod(*NewText.ToString());
+	const int32 EnteredMinutes = FCString::Atoi(*NewText.ToString());
+	if (EnteredMinutes < 5 || EnteredMinutes > 30)
+	{
+		FMessageDialog::Open(EAppMsgType::Ok, FText::FromString("Please enter a value between 5 and 30 minutes."));
+		return;
+	}
+	Config.SyncIntervalSeconds = EnteredMinutes * 60;
 }
 
 void SEditorConfigWidget::OnTargetSyncChanged(TSharedPtr<FString> NewValue, ESelectInfo::Type)
@@ -425,51 +431,15 @@ FReply SEditorConfigWidget::OnCPullButtonClicked()
 
 FReply SEditorConfigWidget::OnPushButtonClicked()
 {
-	LocalizeUtil* localizeUtil = Locate<LocalizeUtil>::Get();
-	TArray<FRecord> RecordsToCommit;
-	if (pushOnlyChangedCheckbox.Get()->IsChecked())
+	TSharedPtr<TArray<FString>> SelectedLanguages = MakeShared<TArray<FString>>();
+	for (const TSharedPtr<FLanguageInfo>& Lang : CommonLocales)
 	{
-		RecordsToCommit = localizeUtil->RecordsChanged;
+		if (Lang.IsValid() && Lang->IsSelected)
+		{
+			SelectedLanguages->Add(Lang->V);
+		}
 	}
-	else
-	{
-		// Push all records
-		RecordsToCommit = FileChangeUtil::GetCurrentRecords();
-	}
-	if (RecordsToCommit.Num() == 0)
-	{
-		FMessageDialog::Open(EAppMsgType::Ok, FText::FromString(" No data to push to Wordbee."));
-		return FReply::Handled();
-	}
-	
-	API::PushRecords(RecordsToCommit, FOnUpdateDocumentComplete::CreateLambda(
-		                 [](bool bSuccess, const int32& _, const FString& message)
-		                 {
-			                 if (bSuccess)
-			                 {
-				                 FNotificationInfo Info(
-					                 FText::FromString("Push data to Wordbee completed successfully."));
-				                 Info.bFireAndForget = true; // Set this to true so it automatically fades out
-				                 Info.ExpireDuration = 2.0f; // How long it takes to fade out when closing
-
-				                 TSharedPtr<SNotificationItem> NotificationPtr = FSlateNotificationManager::Get().
-					                 AddNotification(Info);
-				                 if (NotificationPtr.IsValid())
-				                 {
-					                 NotificationPtr->SetCompletionState(SNotificationItem::CS_Success);
-					                 NotificationPtr->ExpireAndFadeout();
-				                 }
-
-				                 Locate<LocalizeUtil>::Get()->RecordsChanged.Empty();
-				                 FileChangeUtil::CopyLocalizeToSaved();
-			                 }
-			                 else
-			                 {
-				                 FMessageDialog::Open(EAppMsgType::Ok,
-				                                      FText::FromString("Failed to push data to Wordbee: " + message));
-			                 }
-		                 }));
-
+	DocumentService::PushDocument(SelectedLanguages, pushOnlyChangedCheckbox.Get()->IsChecked());
 	return FReply::Handled();
 }
 

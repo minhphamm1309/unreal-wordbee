@@ -20,7 +20,7 @@ bool CronJobHandler::SyncDataTick(float DeltaTime)
 	{
 		LastSyncTime = CurrentTime;
 		UE_LOG(LogTemp, Warning, TEXT("CronJob: Pulling Doc"));
-		DocumentService::PullDocument(nullptr);
+		DocumentService::PullDocument();
 	}
 	return true;  // Keep ticking
 }

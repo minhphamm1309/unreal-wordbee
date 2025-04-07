@@ -186,7 +186,7 @@ void API::PullDocument(FWordbeeUserData userInfo, const FString& DocumentId, FOn
 	RequestJson->SetBoolField("includeComments", true);
 	RequestJson->SetBoolField("includeCustomFields", true);
 	RequestJson->SetBoolField("copySourceToTarget", false);
-	// RequestJson->SetStringField("excludeTexts", Config.TargetSynchronization);
+	RequestJson->SetStringField("excludeTexts", Config.TargetSynchronization);
 
 	// Convert the Keys array to a JSON array
 	if (Keys.Num() > 0)
@@ -323,8 +323,9 @@ void API::ExportRecords(const int32& documentId, TArray<FRecord> Records, FOnUpd
 	TSharedPtr<FJsonObject> Body = MakeShareable(new FJsonObject);
 	Body->SetObjectField(TEXT("header"), Mode);
 	Body->SetArrayField(TEXT("segments"), SegmentsArray);
-
 	FString JsonBody;
+	TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&JsonBody);
+	FJsonSerializer::Serialize(Body.ToSharedRef(), Writer);
 	Request->SetContentAsString(JsonBody);
 	Request->OnProcessRequestComplete().BindLambda(
 		[documentId, Records, TargetRecord, TargetCol, bIsRetry,onCompleted](
@@ -353,9 +354,11 @@ void API::ExportRecords(const int32& documentId, TArray<FRecord> Records, FOnUpd
 			{
 				TSharedPtr<FJsonObject> JsonObject;
 				TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(*Response->GetContentAsString());
+				UE_LOG(LogTemp, Log, TEXT("RequestId is: %s"), *Response->GetContentAsString());
 				if (FJsonSerializer::Deserialize(Reader, JsonObject))
 				{
 					int32 RequestId = JsonObject->GetObjectField("trm")->GetIntegerField("requestid");
+					UE_LOG(LogTemp, Log, TEXT("RequestId is: %d"), RequestId);
 					onCompleted.ExecuteIfBound(true, RequestId, "Done");
 				}
 			}
@@ -399,7 +402,7 @@ void API::PushRecords(TArray<FRecord> Records, FOnUpdateDocumentComplete onCompl
 
 void API::CheckStatus(FWordbeeUserData userInfo, int32 RequestId, int32 RetryCount, FOnPullDocumentComplete callback)
 {
-	if (RequestId == 0 || RetryCount >= 15)
+	if (RequestId == 0 || RetryCount >= MaxRetries)
 	{
 		UE_LOG(LogTemp, Error, TEXT("Status check timed out or invalid request ID."));
 		callback.ExecuteIfBound("");
@@ -431,7 +434,7 @@ void API::CheckStatus(FWordbeeUserData userInfo, int32 RequestId, int32 RetryCou
 				}
 				else
 				{
-					FPlatformProcess::Sleep(2.0f); // Wait before retrying
+					FPlatformProcess::Sleep(Interval); // Wait before retrying
 					CheckStatus(userInfo, RequestId, RetryCount + 1, callback); // Increment retry count
 				}
 			}

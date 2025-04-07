@@ -346,12 +346,8 @@ void SEditorConfigWidget::OnAutoSyncChanged(ECheckBoxState NewState)
 
 void SEditorConfigWidget::OnSyncIntervalChanged(const FText& NewText, ETextCommit::Type CommitType)
 {
-	const int32 EnteredMinutes = FCString::Atoi(*NewText.ToString());
-	if (EnteredMinutes < 5 || EnteredMinutes > 30)
-	{
-		FMessageDialog::Open(EAppMsgType::Ok, FText::FromString("Please enter a value between 5 and 30 minutes."));
-		return;
-	}
+	int32 EnteredMinutes = FCString::Atoi(*NewText.ToString());
+	EnteredMinutes = FMath::Clamp(EnteredMinutes, 5, 30);
 	Config.SyncIntervalSeconds = EnteredMinutes * 60;
 }
 

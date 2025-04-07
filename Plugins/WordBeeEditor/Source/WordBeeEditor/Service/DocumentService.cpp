@@ -18,29 +18,55 @@ void DocumentService::PullDocument(TSharedPtr<TArray<FString>> SelectedLanguages
 	{
 		return;
 	}
-	TSharedPtr<FScopedSlowTask> SlowTask = MakeShared<FScopedSlowTask>(3, FText::FromString(TEXT("Processing... Please wait.")));
-	SlowTask->MakeDialog();
+	FNotificationInfo LoadingInfo(FText::FromString("Pulling data from Wordbee..."));
+	LoadingInfo.bFireAndForget = false;
+	LoadingInfo.FadeOutDuration = 0.5f;
+	LoadingInfo.ExpireDuration = 0.0f;
+	LoadingInfo.bUseThrobber = true;
+	LoadingInfo.bUseSuccessFailIcons = false;
+	TSharedPtr<SNotificationItem> LoadingNotification = FSlateNotificationManager::Get().AddNotification(LoadingInfo);
+	if (LoadingNotification.IsValid())
+	{
+		LoadingNotification->SetCompletionState(SNotificationItem::CS_Pending);
+	}
 	FWordbeeUserData userInfo = SingletonUtil::GetFromIni<FWordbeeUserData>();
 	ULinkDocumentCommand::Execute(userInfo, FString::FromInt(userInfo.DocumentId),
   FOnLinkDocumentComplete::CreateLambda(
-	  [SlowTask, SelectedLanguages, src](bool bSuccess, const FWordbeeDocument& document)
+	  [LoadingNotification, SelectedLanguages, src](bool bSuccess, const FWordbeeDocument& document)
 	  {
 		  if (bSuccess)
 		  {
-			  SlowTask->EnterProgressFrame(1, FText::FromString(TEXT("Storing document...")));
+		  	if (LoadingNotification.IsValid())
+		  	{
+				  LoadingNotification->SetText(FText::FromString("Storing document..."));
+			  }
 			  FDocumentData documentData = SingletonUtil::GetFromIni<FDocumentData>();
 			  ULinkDocumentCommand::SaveDocument(
 				  document, documentData.projectId, documentData.projectName,
 				  documentData.documentName);
-			  SlowTask->EnterProgressFrame(1, FText::FromString(TEXT("Import to Localization...")));
+		  	if (LoadingNotification.IsValid())
+		  	{
+				  LoadingNotification->SetText(FText::FromString("Importing to localization..."));
+			  }
 			  StoreData(SelectedLanguages, src);
 			  Locate<LocalizeUtil>::Get()->RecordsChanged.Empty();
 			  FileChangeUtil::CopyLocalizeToSaved();
-			  SlowTask->EnterProgressFrame(1, FText::FromString(TEXT("Finished!")));
+		  	if (LoadingNotification.IsValid())
+		  	{
+				  LoadingNotification->SetText(FText::FromString("Pull document completed."));
+				  LoadingNotification->SetCompletionState(SNotificationItem::CS_Success);
+				  LoadingNotification->ExpireAndFadeout();
+			  }
 		  }
 		  else
 		  {
 			  UE_LOG(LogTemp, Error, TEXT("Failed to pull data. Please check your connection and try again."));
+		  	if (LoadingNotification.IsValid())
+		  	{
+				  LoadingNotification->SetText(FText::FromString("Failed to pull document."));
+				  LoadingNotification->SetCompletionState(SNotificationItem::CS_Fail);
+				  LoadingNotification->ExpireAndFadeout();
+			  }
 		  }
 	  }));
 }
@@ -114,7 +140,7 @@ void DocumentService::PushDocument(TSharedPtr<TArray<FString>> SelectedLanguages
 				 LoadingNotification->SetText(FText::FromString("Push to Wordbee completed."));
 				 LoadingNotification->SetCompletionState(SNotificationItem::CS_Success);
 				 LoadingNotification->ExpireAndFadeout();
-			 }
+	 		}
 	 	}
 	 	else
 	 	{

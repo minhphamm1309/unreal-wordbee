@@ -5,11 +5,7 @@
 #include "Internationalization/Culture.h"
 #include "Internationalization/Internationalization.h"
 #include "Widgets/Notifications/SNotificationList.h"
-#include "WordBeeEditor/Command/CreateDataAsset/SUserData.h"
-#include "WordBeeEditor/Models/FRecord.h"
 #include "WordBeeEditor/Service/DocumentService.h"
-#include "WordBeeEditor/Utils/FileChangeUtil.h"
-#include "WordBeeEditor/Utils/LocalizeUtil.h"
 #include "WordBeeEditor/Utils/SingletonUtil.h"
 
 struct FLocalizationTargetSettings;

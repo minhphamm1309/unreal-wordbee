@@ -158,18 +158,18 @@ FReply SSelectorDocumentSubWindow::LinkAndCloseWindow()
                       if (bSuccess)
                       {
                           ButtonLinkStateText = FText::FromString("UnLink");
-                          FString documentName = DocumentDataArray.FindByPredicate(
-                              [&](const FDocumentDataResponse& Doc)
-                              {
-	                              return Doc.Id == DocumentId;
-                              })->Name;
-                      		FString projectName = DocumentDataArray.FindByPredicate(
-							  [&](const FDocumentDataResponse& Doc)
-							  {
-	                              return Doc.Id == DocumentId;
-							  })->Preference;
-                          ULinkDocumentCommand::SaveDocument(
-                              Document, ProjectId, projectName, documentName);
+         //                  FString documentName = DocumentDataArray.FindByPredicate(
+         //                      [&](const FDocumentDataResponse& Doc)
+         //                      {
+	        //                       return Doc.Id == DocumentId;
+         //                      })->Name;
+         //              		FString projectName = DocumentDataArray.FindByPredicate(
+							  // [&](const FDocumentDataResponse& Doc)
+							  // {
+	        //                       return Doc.Id == DocumentId;
+							  // })->Preference;
+         //                  ULinkDocumentCommand::SaveDocument(
+         //                      Document, ProjectId, projectName, documentName);
                           OnSubWindowClosed.Execute(true, ProjectId, DocumentId);
                       }
                       else

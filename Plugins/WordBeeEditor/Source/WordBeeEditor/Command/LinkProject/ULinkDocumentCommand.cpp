@@ -1,7 +1,6 @@
 #include "ULinkDocumentCommand.h"
 
 #include "WordBeeEditor/API/API.h"
-#include "WordBeeEditor/Command/StoredLocalize/StoredLocailzationCommand.h"
 #include "WordBeeEditor/Models/FDocumentData.h"
 #include "WordBeeEditor/Models/FColumn.h"
 #include "WordBeeEditor/Models/FLangSupport.h"
@@ -263,20 +262,10 @@ FString ULinkDocumentCommand::GetConvertedLanguage(const FString& Key, const TAr
 	return ConvertedLang;
 }
 
-void ULinkDocumentCommand::SaveUserData(const FWordbeeUserData& UserData, const FDocumentData& Document,
-                                        const FString& String)
-{
-	SingletonUtil::SaveToIni(UserData);
-	SingletonUtil::SaveToIni(Document);
-	UE_LOG(LogTemp, Display, TEXT("ULinkDocumentCommand::SaveUserData"));
-}
-
 void ULinkDocumentCommand::SaveDocument(const FWordbeeDocument& resDocument, const FString& projectId,
                                         const FString& projectName, const FString& documentName)
 {
 	FDocumentData document = SingletonUtil::GetFromIni<FDocumentData>();
-	FWordbeeUserData userData = SingletonUtil::GetFromIni<FWordbeeUserData>();
-
 	if (resDocument.Type.IsEmpty())
 	{
 		UE_LOG(LogTemp, Warning, TEXT("resDocument.Type.IsEmpty"));
@@ -286,7 +275,5 @@ void ULinkDocumentCommand::SaveDocument(const FWordbeeDocument& resDocument, con
 	{
 		UpdateDocument(document, resDocument, projectId, projectName, documentName);
 	}
-
-	SaveUserData(userData, document, projectId);
-
+	SingletonUtil::SaveToIni(document);
 }

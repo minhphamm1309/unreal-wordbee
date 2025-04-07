@@ -2,8 +2,6 @@
 
 #include "DirectoryWatcherModule.h"
 #include "IDirectoryWatcher.h"
-#include "WordBeeEditor/Command/CreateDataAsset/CreateConfigDataAssetCommand.h"
-#include "WordBeeEditor/Command/CreateDataAsset/CreateUserDataAssetCommand.h"
 #include "WordBeeEditor/CronJobs/CronJobHandler.h"
 #include "WordBeeEditor/EditorWindow/SKeyViewerWidget.h"
 #include "WordBeeEditor/EditorWindow/SWorkFlowStatus.h"
@@ -148,8 +146,6 @@ void FWordBeeEditorModule::RegisterMenus()
 
 void FWordBeeEditorModule::OnMenuButtonClicked()
 {
-	CreateUserDataAssetCommand::Execute();
-	CreateConfigDataAssetCommand::CreateConfigDataAsset();
 	FGlobalTabmanager::Get()->TryInvokeTab(WordBeeConfigEditorTabName);
 }
 void FWordBeeEditorModule::OnKeyViewerClicked()

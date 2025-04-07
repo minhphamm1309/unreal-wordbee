@@ -1,19 +1,10 @@
 #include "SConnectTab.h"
 
 #include "WordBeeEditor/API/API.h"
-#include "WordBeeEditor/Command/CreateDataAsset/CreateConfigDataAssetCommand.h"
-#include "WordBeeEditor/Command/DocumentList/UGetDocumentsCommand.h"
 #include "WordBeeEditor/Command/DocumentList/UGetDocumentsCommand.h"
 #include "WordBeeEditor/Command/LinkProject/ULinkDocumentCommand.h"
-#include "WordBeeEditor/Command/StoredLocalize/StoredLocailzationCommand.h"
 #include "WordBeeEditor/EditorWindow/SubWindow/SSelectorDocumentSubWindow.h"
 #include "WordBeeEditor/Utils/SingletonUtil.h"
-
-FReply SConnectTab::OnTestLanguageClicked()
-{
-	//StoredLocailzationCommand::Execute(TArray<FSegment>());
-	return FReply::Handled();
-}
 
 void SConnectTab::Construct(const FArguments& InArgs)
 {
@@ -193,7 +184,6 @@ FReply SConnectTab::OnConnectButtonClicked()
 	SetConnectingState(true);
 	// Call the API to authenticate
 	API::Authenticate(SAccountId, SAPIKey, SUrl, FOnAuthCompleted::CreateSP(this, &SConnectTab::OnCompletedAuth));
-
 	return FReply::Handled();
 }
 
@@ -212,12 +202,10 @@ FReply SConnectTab::OnSelectDocumentClicked()
 FReply SConnectTab::OnLinkDocumentClicked()
 {
 	FString SDocumentId = DocumentId->GetText().ToString();
-
 	if (DocumentId.IsValid()) 
 	{
 		UserInfo.DocumentId = FCString::Atoi(*SDocumentId);
 	}
-	
 	if (!bIsDocumentLinked)
 	{
 		bIsLinkReadyToClick = false;
@@ -228,26 +216,13 @@ FReply SConnectTab::OnLinkDocumentClicked()
                   if (bSuccess)
                   {
                       bIsDocumentLinked = true;
-                      FString documentName = DocumentsData.FindByPredicate(
+                      int32 ProjectId = DocumentsData.FindByPredicate(
                           [&](const FDocumentDataResponse& Doc)
                           {
                               return Doc.Id == SDocumentId;
-                          })->Name;
-                  	
-                      FString ProjectId = DocumentsData.FindByPredicate(
-                          [&](const FDocumentDataResponse& Doc)
-                          {
-                              return Doc.Id == SDocumentId;
-                          })->Preference;
-                  	
-                      if (ProjectId.IsEmpty())
-                      {
-                          ProjectId = documentName;
-                      	UserInfo.ProjectId = SDocumentId;
-                      }
-                  	
-                      ULinkDocumentCommand::SaveDocument(
-                          Document, SDocumentId, ProjectId, documentName);
+                          })->Pid;
+                  		UserInfo.ProjectId = FString::FromInt(ProjectId);
+                  	SaveSettings();
                   }
                   else
                   {
@@ -255,15 +230,9 @@ FReply SConnectTab::OnLinkDocumentClicked()
                   }
               }));
 	}
-	else
-	{
-		ULinkDocumentCommand::SaveDocument(
-						  FWordbeeDocument(), "", "", "");
-	}
 	bIsDocumentLinked = !bIsDocumentLinked;
 	return FReply::Handled();
 }
-
 
 FText SConnectTab::GetLinkButtonText() const
 {
@@ -303,7 +272,6 @@ void SConnectTab::OnCompletedAuth(FString ResponseString)
 		ResponseTextBlock->SetText(FText::FromString(AuthToken));
 		ResponseTextBlock->SetVisibility(EVisibility::Visible);
 		bIsAuthenticated = true;
-
 		UserInfo.AuthToken = ResponseString.TrimChar('"');
 		SaveSettings();
 		LoadDocumentSettings();
@@ -372,5 +340,4 @@ void SConnectTab::OnSubWindowClosed(bool isLinked, FString InProjectId, FString 
 	UserInfo.ProjectId = InProjectId;
 	UserInfo.DocumentId = FCString::Atoi(*InDocumentId);
 	SaveSettings();
-
 }

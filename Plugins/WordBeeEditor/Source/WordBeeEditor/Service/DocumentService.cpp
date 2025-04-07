@@ -92,7 +92,8 @@ void DocumentService::PushDocument(TSharedPtr<TArray<FString>> SelectedLanguages
 		return;
 	}
 	TSharedPtr<SNotificationItem> LoadingNotification = ShowLoadingNotification("Pushing data to Wordbee...");
-	API::PushRecords(RecordsToCommit, FOnUpdateDocumentComplete::CreateLambda(
+	FWordbeeUserData userInfo = SingletonUtil::GetFromIni<FWordbeeUserData>();
+	API::PushRecords(userInfo, RecordsToCommit, FOnUpdateDocumentComplete::CreateLambda(
 	 [LoadingNotification](bool bSuccess, const int32& _, const FString& message)
 	 {
 	 	if (bSuccess)

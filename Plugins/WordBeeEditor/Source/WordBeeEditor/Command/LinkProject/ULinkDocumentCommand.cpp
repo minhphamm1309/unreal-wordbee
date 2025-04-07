@@ -16,11 +16,10 @@ void ULinkDocumentCommand::Execute(FWordbeeUserData UserInfo, const FString Docu
 	API::PullDocument(UserInfo, DocumentId, FOnPullDocumentComplete::CreateLambda([=](const FString& downloadContent)
 	{
 		FWordbeeDocument WordbeeFile;
-
 		if (ParseJsonToWordbeeFile(downloadContent, WordbeeFile))
 		{
 			callback.ExecuteIfBound(true, WordbeeFile);
-			UE_LOG(LogTemp, Log, TEXT("Parsed Wordbee file successfully: content: %s"), *downloadContent);
+			UE_LOG(LogTemp, Log, TEXT("Parsed Wordbee file successfully"));
 		}
 		else
 		{

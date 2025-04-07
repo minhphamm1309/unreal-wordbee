@@ -8,11 +8,275 @@
 				{
 					"Source":
 					{
-						"Text": "Navigate through lush forests, treacherous dungeons, and ancient ruins as you uncover the secrets of the arcane.Master powerful spells and abilities to vanquish formidable enemies and conquer challenging quests.Collect rare artifacts and legendary weapons to enhance your strength and become a true champion of the realm.To begin your adventure, select your character class: Mage, Warrior, or this was changed.English (United States)Welcome to the world of Arcane Adventures! Prepare to embark on an epic journey filled with magic and mystery."
+						"Text": "Username english 142"
 					},
 					"Translation":
 					{
-						"Text": "Navigate through lush forests, treacherous dungeons, and ancient ruins as you uncover the secrets of the arcane.Master powerful spells and abilities to vanquish formidable enemies and conquer challenging quests.Collect rare artifacts and legendary weapons to enhance your strength and become a true champion of the realm.To begin your adventure, select your character class: Mage, Warrior, or this was changed.English (United States)Welcome to the world of Arcane Adventures! Prepare to embark on an epic journey filled with magic and mystery."
+						"Text": "Username english 142"
+					},
+					"Key": "WB_LABEL_USERNAME"
+				},
+				{
+					"Source":
+					{
+						"Text": "Password"
+					},
+					"Translation":
+					{
+						"Text": "Password"
+					},
+					"Key": "WB_LABEL_PASSWORD"
+				},
+				{
+					"Source":
+					{
+						"Text": "Change Language UPDA"
+					},
+					"Translation":
+					{
+						"Text": "Change Language UPDA"
+					},
+					"Key": "WB_LABEL_CHANGLANGUAGE"
+				},
+				{
+					"Source":
+					{
+						"Text": "login"
+					},
+					"Translation":
+					{
+						"Text": "login"
+					},
+					"Key": "WB_BUTTON_LOGIN"
+				},
+				{
+					"Source":
+					{
+						"Text": "Change Language"
+					},
+					"Translation":
+					{
+						"Text": "Change Language"
+					},
+					"Key": "WB_LABEL_CHANGELANGUAGE"
+				},
+				{
+					"Source":
+					{
+						"Text": "test enUK"
+					},
+					"Translation":
+					{
+						"Text": "test enUK"
+					},
+					"Key": "WB_TEST"
+				},
+				{
+					"Source":
+					{
+						"Text": "Test 2"
+					},
+					"Translation":
+					{
+						"Text": "Test 2"
+					},
+					"Key": "WB_TEST_2"
+				},
+				{
+					"Source":
+					{
+						"Text": "hihi"
+					},
+					"Translation":
+					{
+						"Text": "hihi"
+					},
+					"Key": "keytest1"
+				},
+				{
+					"Source":
+					{
+						"Text": "engeng"
+					},
+					"Translation":
+					{
+						"Text": "engeng"
+					},
+					"Key": "abcxyz"
+				},
+				{
+					"Source":
+					{
+						"Text": "vn"
+					},
+					"Translation":
+					{
+						"Text": "vn"
+					},
+					"Key": "eeeee"
+				},
+				{
+					"Source":
+					{
+						"Text": "1vvv"
+					},
+					"Translation":
+					{
+						"Text": "1vvv"
+					},
+					"Key": "iloveyou"
+				},
+				{
+					"Source":
+					{
+						"Text": "hehehihi"
+					},
+					"Translation":
+					{
+						"Text": "hehehihi"
+					},
+					"Key": "WB_LABEL_ADDED1"
+				},
+				{
+					"Source":
+					{
+						"Text": "vnnnven"
+					},
+					"Translation":
+					{
+						"Text": "vnnnven"
+					},
+					"Key": "keytest2"
+				},
+				{
+					"Source":
+					{
+						"Text": "aaaRaiden shogun"
+					},
+					"Translation":
+					{
+						"Text": "aaaRaiden shogun"
+					},
+					"Key": "mylover"
+				},
+				{
+					"Source":
+					{
+						"Text": "raiden mei"
+					},
+					"Translation":
+					{
+						"Text": "raiden mei"
+					},
+					"Key": "mylover2"
+				},
+				{
+					"Source":
+					{
+						"Text": "nguyetmily"
+					},
+					"Translation":
+					{
+						"Text": "nguyetmily"
+					},
+					"Key": "mylover3"
+				},
+				{
+					"Source":
+					{
+						"Text": "username en1"
+					},
+					"Translation":
+					{
+						"Text": "username en1"
+					},
+					"Key": "usernamelbl"
+				},
+				{
+					"Source":
+					{
+						"Text": "password en"
+					},
+					"Translation":
+					{
+						"Text": "password en"
+					},
+					"Key": "passwordlbl"
+				},
+				{
+					"Source":
+					{
+						"Text": "login en"
+					},
+					"Translation":
+					{
+						"Text": "login en"
+					},
+					"Key": "loginlbl"
+				},
+				{
+					"Source":
+					{
+						"Text": "language en"
+					},
+					"Translation":
+					{
+						"Text": "language en"
+					},
+					"Key": "languagelbl"
+				},
+				{
+					"Source":
+					{
+						"Text": "Navigate through lush forests, treacherous dungeons, and ancient ruins as you uncover the secrets of the arcane."
+					},
+					"Translation":
+					{
+						"Text": "Navigate through lush forests, treacherous dungeons, and ancient ruins as you uncover the secrets of the arcane."
+					},
+					"Key": "4"
+				},
+				{
+					"Source":
+					{
+						"Text": "Collect rare artifacts and legendary weapons to enhance your strength and become a true champion of the realm."
+					},
+					"Translation":
+					{
+						"Text": "Collect rare artifacts and legendary weapons to enhance your strength and become a true champion of the realm."
+					},
+					"Key": "6"
+				},
+				{
+					"Source":
+					{
+						"Text": "Username english "
+					},
+					"Translation":
+					{
+						"Text": "Username english "
+					},
+					"Key": "WB_LABEL_USERNAME_CHANGE"
+				},
+				{
+					"Source":
+					{
+						"Text": "Username english "
+					},
+					"Translation":
+					{
+						"Text": "Username english "
+					},
+					"Key": "WB_LABEL_USERNAME_MATTBERRY"
+				},
+				{
+					"Source":
+					{
+						"Text": "Welcome to the world of Arcane Adventures! Prepare to embark on an epic journey filled with magic and mystery.Navigate through lush forests, treacherous dungeons, and ancient ruins as you uncover the secrets of the arcane.Master powerful spells and abilities to vanquish formidable enemies and conquer challenging quests.Collect rare artifacts and legendary weapons to enhance your strength and become a true champion of the realm.To begin your adventure, select your character class: Mage, Warrior, or this was changed.English (United States)"
+					},
+					"Translation":
+					{
+						"Text": "Welcome to the world of Arcane Adventures! Prepare to embark on an epic journey filled with magic and mystery.Navigate through lush forests, treacherous dungeons, and ancient ruins as you uncover the secrets of the arcane.Master powerful spells and abilities to vanquish formidable enemies and conquer challenging quests.Collect rare artifacts and legendary weapons to enhance your strength and become a true champion of the realm.To begin your adventure, select your character class: Mage, Warrior, or this was changed.English (United States)"
 					},
 					"Key": "abc"
 				},
@@ -110015,6 +110279,17 @@
 						"Text": "unreal en 10000"
 					},
 					"Key": "unreal_10000"
+				},
+				{
+					"Source":
+					{
+						"Text": "unreal en 10001"
+					},
+					"Translation":
+					{
+						"Text": "unreal en 10001"
+					},
+					"Key": "unreal_10001"
 				}
 			]
 		}

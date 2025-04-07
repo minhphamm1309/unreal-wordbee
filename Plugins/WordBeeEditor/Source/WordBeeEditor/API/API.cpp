@@ -354,11 +354,9 @@ void API::ExportRecords(const int32& documentId, TArray<FRecord> Records, FOnUpd
 			{
 				TSharedPtr<FJsonObject> JsonObject;
 				TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(*Response->GetContentAsString());
-				UE_LOG(LogTemp, Log, TEXT("RequestId is: %s"), *Response->GetContentAsString());
 				if (FJsonSerializer::Deserialize(Reader, JsonObject))
 				{
 					int32 RequestId = JsonObject->GetObjectField("trm")->GetIntegerField("requestid");
-					UE_LOG(LogTemp, Log, TEXT("RequestId is: %d"), RequestId);
 					onCompleted.ExecuteIfBound(true, RequestId, "Done");
 				}
 			}

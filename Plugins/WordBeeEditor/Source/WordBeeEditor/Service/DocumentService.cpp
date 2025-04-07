@@ -18,17 +18,7 @@ void DocumentService::PullDocument(TSharedPtr<TArray<FString>> SelectedLanguages
 	{
 		return;
 	}
-	FNotificationInfo LoadingInfo(FText::FromString("Pulling data from Wordbee..."));
-	LoadingInfo.bFireAndForget = false;
-	LoadingInfo.FadeOutDuration = 0.5f;
-	LoadingInfo.ExpireDuration = 0.0f;
-	LoadingInfo.bUseThrobber = true;
-	LoadingInfo.bUseSuccessFailIcons = false;
-	TSharedPtr<SNotificationItem> LoadingNotification = FSlateNotificationManager::Get().AddNotification(LoadingInfo);
-	if (LoadingNotification.IsValid())
-	{
-		LoadingNotification->SetCompletionState(SNotificationItem::CS_Pending);
-	}
+	TSharedPtr<SNotificationItem> LoadingNotification = ShowLoadingNotification("Pulling data from Wordbee...");
 	FWordbeeUserData userInfo = SingletonUtil::GetFromIni<FWordbeeUserData>();
 	ULinkDocumentCommand::Execute(userInfo, FString::FromInt(userInfo.DocumentId),
   FOnLinkDocumentComplete::CreateLambda(
@@ -36,37 +26,21 @@ void DocumentService::PullDocument(TSharedPtr<TArray<FString>> SelectedLanguages
 	  {
 		  if (bSuccess)
 		  {
-		  	if (LoadingNotification.IsValid())
-		  	{
-				  LoadingNotification->SetText(FText::FromString("Storing document..."));
-			  }
+		  	UpdateNotificationText(LoadingNotification, "Storing document...", false, false);
 			  FDocumentData documentData = SingletonUtil::GetFromIni<FDocumentData>();
 			  ULinkDocumentCommand::SaveDocument(
 				  document, documentData.projectId, documentData.projectName,
 				  documentData.documentName);
-		  	if (LoadingNotification.IsValid())
-		  	{
-				  LoadingNotification->SetText(FText::FromString("Importing to localization..."));
-			  }
+		  	UpdateNotificationText(LoadingNotification, "Importing to localization...", false, false);
 			  StoreData(SelectedLanguages, src);
 			  Locate<LocalizeUtil>::Get()->RecordsChanged.Empty();
 			  FileChangeUtil::CopyLocalizeToSaved();
-		  	if (LoadingNotification.IsValid())
-		  	{
-				  LoadingNotification->SetText(FText::FromString("Pull document completed."));
-				  LoadingNotification->SetCompletionState(SNotificationItem::CS_Success);
-				  LoadingNotification->ExpireAndFadeout();
-			  }
+		  	UpdateNotificationText(LoadingNotification, "Pull document completed.", true, true);
 		  }
 		  else
 		  {
 			  UE_LOG(LogTemp, Error, TEXT("Failed to pull data. Please check your connection and try again."));
-		  	if (LoadingNotification.IsValid())
-		  	{
-				  LoadingNotification->SetText(FText::FromString("Failed to pull document."));
-				  LoadingNotification->SetCompletionState(SNotificationItem::CS_Fail);
-				  LoadingNotification->ExpireAndFadeout();
-			  }
+		  	UpdateNotificationText(LoadingNotification, "Failed to pull document.", false, true);
 		  }
 	  }));
 }
@@ -117,17 +91,7 @@ void DocumentService::PushDocument(TSharedPtr<TArray<FString>> SelectedLanguages
 		FMessageDialog::Open(EAppMsgType::Ok, FText::FromString(" No data to push to Wordbee."));
 		return;
 	}
-	FNotificationInfo LoadingInfo(FText::FromString("Pushing data to Wordbee..."));
-	LoadingInfo.bFireAndForget = false;
-	LoadingInfo.FadeOutDuration = 0.5f;
-	LoadingInfo.ExpireDuration = 0.0f;
-	LoadingInfo.bUseThrobber = true;
-	LoadingInfo.bUseSuccessFailIcons = false;
-	TSharedPtr<SNotificationItem> LoadingNotification = FSlateNotificationManager::Get().AddNotification(LoadingInfo);
-	if (LoadingNotification.IsValid())
-	{
-		LoadingNotification->SetCompletionState(SNotificationItem::CS_Pending);
-	}
+	TSharedPtr<SNotificationItem> LoadingNotification = ShowLoadingNotification("Pushing data to Wordbee...");
 	API::PushRecords(RecordsToCommit, FOnUpdateDocumentComplete::CreateLambda(
 	 [LoadingNotification](bool bSuccess, const int32& _, const FString& message)
 	 {
@@ -135,23 +99,52 @@ void DocumentService::PushDocument(TSharedPtr<TArray<FString>> SelectedLanguages
 	 	{
 			 Locate<LocalizeUtil>::Get()->RecordsChanged.Empty();
 			 FileChangeUtil::CopyLocalizeToSaved();
-	 		if (LoadingNotification.IsValid())
-	 		{
-				 LoadingNotification->SetText(FText::FromString("Push to Wordbee completed."));
-				 LoadingNotification->SetCompletionState(SNotificationItem::CS_Success);
-				 LoadingNotification->ExpireAndFadeout();
-	 		}
+	 		UpdateNotificationText(LoadingNotification, "Push to Wordbee completed.", true, true);
 	 	}
 	 	else
 	 	{
-	 		if (LoadingNotification.IsValid())
-	 		{
-				 LoadingNotification->SetText(FText::FromString("Failed to push to Wordbee."));
-				 LoadingNotification->SetCompletionState(SNotificationItem::CS_Fail);
-				 LoadingNotification->ExpireAndFadeout();
-			 }
+	 		UpdateNotificationText(LoadingNotification, "Failed to push to Wordbee.", false, true);
 			 FMessageDialog::Open(EAppMsgType::Ok,
 								  FText::FromString("Failed to push data to Wordbee: " + message));
 	 	}
 	 }));
 }
+TSharedPtr<SNotificationItem> DocumentService::ShowLoadingNotification(const FString& InitialText)
+{
+	FNotificationInfo LoadingInfo(FText::FromString(InitialText));
+	LoadingInfo.bFireAndForget = false;
+	LoadingInfo.FadeOutDuration = 0.5f;
+	LoadingInfo.ExpireDuration = 3.0f;
+	LoadingInfo.bUseThrobber = true;
+	LoadingInfo.bUseSuccessFailIcons = false;
+
+	TSharedPtr<SNotificationItem> LoadingNotification = FSlateNotificationManager::Get().AddNotification(LoadingInfo);
+	if (LoadingNotification.IsValid())
+	{
+		LoadingNotification->SetCompletionState(SNotificationItem::CS_Pending);
+	}
+	return LoadingNotification;
+}
+
+void DocumentService::UpdateNotificationText(TSharedPtr<SNotificationItem> Notification, const FString& NewText, bool bSuccess, bool bExpireAfter)
+{
+	if (Notification.IsValid())
+	{
+		Notification->SetText(FText::FromString(NewText));
+
+		if (bSuccess)
+		{
+			Notification->SetCompletionState(SNotificationItem::CS_Success);
+		}
+		else
+		{
+			Notification->SetCompletionState(SNotificationItem::CS_Fail);
+		}
+
+		if (bExpireAfter)
+		{
+			Notification->ExpireAndFadeout();
+		}
+	}
+}
+

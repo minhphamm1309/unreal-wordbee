@@ -8,7 +8,295 @@
 				{
 					"Source":
 					{
-						"Text": "Navigate through lush forests, treacherous dungeons, and ancient ruins as you uncover the secrets of the arcane.Master powerful spells and abilities to vanquish formidable enemies and conquer challenging quests.Collect rare artifacts and legendary weapons to enhance your strength and become a true champion of the realm.To begin your adventure, select your character class: Mage, Warrior, or this was changed.English (United States)Welcome to the world of Arcane Adventures! Prepare to embark on an epic journey filled with magic and mystery."
+						"Text": "Username english 142"
+					},
+					"Keys": [
+						{
+							"Key": "WB_LABEL_USERNAME",
+							"Path": ""
+						}
+					]
+				},
+				{
+					"Source":
+					{
+						"Text": "Password"
+					},
+					"Keys": [
+						{
+							"Key": "WB_LABEL_PASSWORD",
+							"Path": ""
+						}
+					]
+				},
+				{
+					"Source":
+					{
+						"Text": "Change Language UPDA"
+					},
+					"Keys": [
+						{
+							"Key": "WB_LABEL_CHANGLANGUAGE",
+							"Path": ""
+						}
+					]
+				},
+				{
+					"Source":
+					{
+						"Text": "login"
+					},
+					"Keys": [
+						{
+							"Key": "WB_BUTTON_LOGIN",
+							"Path": ""
+						}
+					]
+				},
+				{
+					"Source":
+					{
+						"Text": "Change Language"
+					},
+					"Keys": [
+						{
+							"Key": "WB_LABEL_CHANGELANGUAGE",
+							"Path": ""
+						}
+					]
+				},
+				{
+					"Source":
+					{
+						"Text": "test enUK"
+					},
+					"Keys": [
+						{
+							"Key": "WB_TEST",
+							"Path": ""
+						}
+					]
+				},
+				{
+					"Source":
+					{
+						"Text": "Test 2"
+					},
+					"Keys": [
+						{
+							"Key": "WB_TEST_2",
+							"Path": ""
+						}
+					]
+				},
+				{
+					"Source":
+					{
+						"Text": "hihi"
+					},
+					"Keys": [
+						{
+							"Key": "keytest1",
+							"Path": ""
+						}
+					]
+				},
+				{
+					"Source":
+					{
+						"Text": "engeng"
+					},
+					"Keys": [
+						{
+							"Key": "abcxyz",
+							"Path": ""
+						}
+					]
+				},
+				{
+					"Source":
+					{
+						"Text": "vn"
+					},
+					"Keys": [
+						{
+							"Key": "eeeee",
+							"Path": ""
+						}
+					]
+				},
+				{
+					"Source":
+					{
+						"Text": "1vvv"
+					},
+					"Keys": [
+						{
+							"Key": "iloveyou",
+							"Path": ""
+						}
+					]
+				},
+				{
+					"Source":
+					{
+						"Text": "hehehihi"
+					},
+					"Keys": [
+						{
+							"Key": "WB_LABEL_ADDED1",
+							"Path": ""
+						}
+					]
+				},
+				{
+					"Source":
+					{
+						"Text": "vnnnven"
+					},
+					"Keys": [
+						{
+							"Key": "keytest2",
+							"Path": ""
+						}
+					]
+				},
+				{
+					"Source":
+					{
+						"Text": "aaaRaiden shogun"
+					},
+					"Keys": [
+						{
+							"Key": "mylover",
+							"Path": ""
+						}
+					]
+				},
+				{
+					"Source":
+					{
+						"Text": "raiden mei"
+					},
+					"Keys": [
+						{
+							"Key": "mylover2",
+							"Path": ""
+						}
+					]
+				},
+				{
+					"Source":
+					{
+						"Text": "nguyetmily"
+					},
+					"Keys": [
+						{
+							"Key": "mylover3",
+							"Path": ""
+						}
+					]
+				},
+				{
+					"Source":
+					{
+						"Text": "username en1"
+					},
+					"Keys": [
+						{
+							"Key": "usernamelbl",
+							"Path": ""
+						}
+					]
+				},
+				{
+					"Source":
+					{
+						"Text": "password en"
+					},
+					"Keys": [
+						{
+							"Key": "passwordlbl",
+							"Path": ""
+						}
+					]
+				},
+				{
+					"Source":
+					{
+						"Text": "login en"
+					},
+					"Keys": [
+						{
+							"Key": "loginlbl",
+							"Path": ""
+						}
+					]
+				},
+				{
+					"Source":
+					{
+						"Text": "language en"
+					},
+					"Keys": [
+						{
+							"Key": "languagelbl",
+							"Path": ""
+						}
+					]
+				},
+				{
+					"Source":
+					{
+						"Text": "Navigate through lush forests, treacherous dungeons, and ancient ruins as you uncover the secrets of the arcane."
+					},
+					"Keys": [
+						{
+							"Key": "4",
+							"Path": ""
+						}
+					]
+				},
+				{
+					"Source":
+					{
+						"Text": "Collect rare artifacts and legendary weapons to enhance your strength and become a true champion of the realm."
+					},
+					"Keys": [
+						{
+							"Key": "6",
+							"Path": ""
+						}
+					]
+				},
+				{
+					"Source":
+					{
+						"Text": "Username english "
+					},
+					"Keys": [
+						{
+							"Key": "WB_LABEL_USERNAME_CHANGE",
+							"Path": ""
+						}
+					]
+				},
+				{
+					"Source":
+					{
+						"Text": "Username english "
+					},
+					"Keys": [
+						{
+							"Key": "WB_LABEL_USERNAME_MATTBERRY",
+							"Path": ""
+						}
+					]
+				},
+				{
+					"Source":
+					{
+						"Text": "Welcome to the world of Arcane Adventures! Prepare to embark on an epic journey filled with magic and mystery.Navigate through lush forests, treacherous dungeons, and ancient ruins as you uncover the secrets of the arcane.Master powerful spells and abilities to vanquish formidable enemies and conquer challenging quests.Collect rare artifacts and legendary weapons to enhance your strength and become a true champion of the realm.To begin your adventure, select your character class: Mage, Warrior, or this was changed.English (United States)"
 					},
 					"Keys": [
 						{
@@ -120013,6 +120301,18 @@
 					"Keys": [
 						{
 							"Key": "unreal_10000",
+							"Path": ""
+						}
+					]
+				},
+				{
+					"Source":
+					{
+						"Text": "unreal en 10001"
+					},
+					"Keys": [
+						{
+							"Key": "unreal_10001",
 							"Path": ""
 						}
 					]

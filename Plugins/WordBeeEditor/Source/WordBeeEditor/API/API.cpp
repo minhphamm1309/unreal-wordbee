@@ -1,7 +1,5 @@
 #include "API.h"
 
-#include <__ranges/elements_view.h>
-
 #include "HttpModule.h"
 #include "Interfaces/IHttpRequest.h"
 #include "Interfaces/IHttpResponse.h"
@@ -11,7 +9,6 @@
 #include "WordBeeEditor/Models/FEditorConfig.h"
 #include "WordbeeEditor/Models/WordbeeResponse.h"
 #include "WordBeeEditor/Utils/APIConstant.h"
-#include "WordBeeEditor/Utils/SingletonUtil.h"
 
 
 const FString API::ROUTER_AUTH = "api/auth/token";
@@ -156,6 +153,11 @@ void API::FetchDocumentById(FWordbeeUserData userInfo, const FString& DocumentId
 				);
 				return;
 			}
+			if (!EHttpResponseCodes::IsOk(ResponseCode))
+			{
+				OnError(TEXT("Failed to link document"));
+				return;
+			}
 			FDocumentInfo ParsedDocument;
 			if (!FJsonObjectConverter::JsonObjectStringToUStruct<FDocumentInfo>(rawBody, &ParsedDocument, 1, 0))
 			{
@@ -179,7 +181,7 @@ void API::PullDocument(FWordbeeUserData userInfo, const FString& DocumentId, FOn
 	Request->SetHeader(APIConstant::AuthAccountID, userInfo.AccountId);
 	Request->SetHeader(APIConstant::AuthToken, userInfo.AuthToken);
 
-	FEditorConfig Config = SingletonUtil::GetFromIni<FEditorConfig>();
+	FEditorConfig Config = wordbee::SingletonUtil<FEditorConfig>::GetFromIni();
 	// Create JSON body
 	TSharedPtr<FJsonObject> RequestJson = MakeShareable(new FJsonObject());
 	RequestJson->SetBoolField("includeComments", true);
@@ -208,18 +210,18 @@ void API::PullDocument(FWordbeeUserData userInfo, const FString& DocumentId, FOn
 	{
 		if (Res->GetResponseCode() == 401)
 		{
-			FWordbeeUserData userInfo = SingletonUtil::GetFromIni<FWordbeeUserData>();
-			Authenticate(userInfo.AccountId, userInfo.ApiKey, userInfo.Url,
+			FWordbeeUserData wUserInfo = wordbee::SingletonUtil<FWordbeeUserData>::GetFromIni();
+			Authenticate(wUserInfo.AccountId, wUserInfo.ApiKey, wUserInfo.Url,
 			             FOnAuthCompleted::CreateLambda(
 				             [=](
 				             FString NewToken) mutable
 				             {
 					             // Update userInfo with new token and retry request
-					             userInfo.AuthToken = NewToken;
+								 wUserInfo.AuthToken = NewToken;
 					             UE_LOG(LogTemp, Log,
 					                    TEXT("Authentication successful, retrying document fetch..."));
-					             SingletonUtil::SaveToIni<FWordbeeUserData>(userInfo);
-					             PullDocument(userInfo, DocumentId, callback);
+					             wordbee::SingletonUtil<FWordbeeUserData>::SaveToIni(wUserInfo);
+					             PullDocument(wUserInfo, DocumentId, callback);
 				             })
 			);
 		}
@@ -252,8 +254,8 @@ void API::ExportRecords(FWordbeeUserData userInfo, TArray<FRecord> Records, FOnU
 	Request->SetURL(url);
 	Request->SetVerb(TEXT("POST"));
 
-	Request->SetHeader(TEXT("X-Auth-AccountId"), userInfo.AccountId);
-	Request->SetHeader(TEXT("X-Auth-Token"), userInfo.AuthToken);
+	Request->SetHeader(APIConstant::AuthAccountID, userInfo.AccountId);
+	Request->SetHeader(APIConstant::AuthToken, userInfo.AuthToken);
 	Request->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
 
 	TArray<TSharedPtr<FJsonValue>> SegmentsArray;
@@ -337,7 +339,7 @@ void API::ExportRecords(FWordbeeUserData userInfo, TArray<FRecord> Records, FOnU
 				             // Update userInfo with new token and retry request
 				             userInfo.AuthToken = NewToken;
 				             UE_LOG(LogTemp, Log, TEXT("Authentication successful, retrying document fetch..."));
-				             SingletonUtil::SaveToIni<FWordbeeUserData>(userInfo);
+				             wordbee::SingletonUtil<FWordbeeUserData>::SaveToIni(userInfo);
 				             API::ExportRecords(userInfo, Records, onCompleted, TargetRecord, TargetCol,
 				                                true);
 			             })
@@ -389,8 +391,8 @@ void API::CheckStatus(FWordbeeUserData userInfo, int32 RequestId, int32 RetryCou
 	Request->SetURL(url);
 	Request->SetVerb(TEXT("GET"));
 
-	Request->SetHeader(TEXT("X-Auth-AccountId"), userInfo.AccountId);
-	Request->SetHeader(TEXT("X-Auth-Token"), userInfo.AuthToken);
+	Request->SetHeader(APIConstant::AuthAccountID, userInfo.AccountId);
+	Request->SetHeader(APIConstant::AuthToken, userInfo.AuthToken);
 	Request->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
 
 	Request->OnProcessRequestComplete().BindLambda([=](FHttpRequestPtr Req, FHttpResponsePtr Res, bool bSuccess)
@@ -428,17 +430,17 @@ void API::CheckStatus(int32 RequestId, int32 RetryCount, FOnCheckStatusComplete 
 	if (RequestId == 0 || RetryCount >= MaxRetries)
 	{
 		UE_LOG(LogTemp, Error, TEXT("Status check timed out or invalid request ID."));
-		callback.ExecuteIfBound("");
+		callback.ExecuteIfBound(false);
 		return;
 	}
-	FWordbeeUserData userInfo = SingletonUtil::GetFromIni<FWordbeeUserData>();
+	FWordbeeUserData userInfo = wordbee::SingletonUtil<FWordbeeUserData>::GetFromIni();
 	TSharedRef<IHttpRequest, ESPMode::ThreadSafe> Request = FHttpModule::Get().CreateRequest();
 	FString url = ConstructUrl(userInfo.AccountId, userInfo.Url, FString::Format(*ROUTER_POLL, {RequestId}));
 	Request->SetURL(url);
 	Request->SetVerb(TEXT("GET"));
 
-	Request->SetHeader(TEXT("X-Auth-AccountId"), userInfo.AccountId);
-	Request->SetHeader(TEXT("X-Auth-Token"), userInfo.AuthToken);
+	Request->SetHeader(APIConstant::AuthAccountID, userInfo.AccountId);
+	Request->SetHeader(APIConstant::AuthToken, userInfo.AuthToken);
 	Request->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
 
 
@@ -480,8 +482,8 @@ void API::DownloadFile(FWordbeeUserData userInfo, const FString& FileToken, FOnP
 	Request->SetURL(url);
 	Request->SetVerb(TEXT("GET"));
 
-	Request->SetHeader(TEXT("X-Auth-AccountId"), userInfo.AccountId);
-	Request->SetHeader(TEXT("X-Auth-Token"), userInfo.AuthToken);
+	Request->SetHeader(APIConstant::AuthAccountID, userInfo.AccountId);
+	Request->SetHeader(APIConstant::AuthToken, userInfo.AuthToken);
 	Request->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
 
 	Request->OnProcessRequestComplete().BindLambda([=](FHttpRequestPtr Req, FHttpResponsePtr Res, bool bSuccess)
@@ -660,18 +662,18 @@ void API::ExportSegment(FWordbeeUserData userInfo, FSegment segment, FOnUpdateDo
 		{
 			if (Response->GetResponseCode() == 401)
 			{
-				FWordbeeUserData userInfo = SingletonUtil::GetFromIni<FWordbeeUserData>();
-				Authenticate(userInfo.AccountId, userInfo.ApiKey, userInfo.Url,
+				FWordbeeUserData wUserInfo = wordbee::SingletonUtil<FWordbeeUserData>::GetFromIni();
+				Authenticate(wUserInfo.AccountId, wUserInfo.ApiKey, wUserInfo.Url,
 				             FOnAuthCompleted::CreateLambda(
 					             [=](
 					             FString NewToken) mutable
 					             {
 						             // Update userInfo with new token and retry request
-						             userInfo.AuthToken = NewToken;
+									 wUserInfo.AuthToken = NewToken;
 						             UE_LOG(LogTemp, Log,
 						                    TEXT("Authentication successful, retrying document fetch..."));
-						             SingletonUtil::SaveToIni<FWordbeeUserData>(userInfo);
-						             API::ExportSegment(userInfo, segment, onCompleted, true);
+						             wordbee::SingletonUtil<FWordbeeUserData>::SaveToIni(wUserInfo);
+						             API::ExportSegment(wUserInfo, segment, onCompleted, true);
 					             })
 				);
 			}

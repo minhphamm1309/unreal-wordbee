@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "Widgets/SCompoundWidget.h"
 #include "WordBeeEditor/Command/DocumentList/FDocumentDataResponse.h"
+#include "WordBeeEditor/EditorWindow/WordBeeEditorConfigWindow.h"
 #include "WordBeeEditor/Models/WordbeeUserData.h"
 
 struct FDocument;
@@ -42,11 +43,7 @@ private:
 	void UpdateFilteredDocuments(const FString& SelectedPreference);
 	FText ButtonLinkStateText;
 	bool bIsReadyToLink {true};
-	
-
-	
 	FOnSubWindowClosedDelegate OnSubWindowClosed;
-
 	FString DocumentId;
 	FString ProjectId;
 };

@@ -1,6 +1,7 @@
 #include "FileChangeUtil.h"
 
 #include "LocalizeUtil.h"
+#include "Locate.h"
 #include "SingletonUtil.h"
 #include "WordBeeEditor/Models/FDocumentData.h"
 
@@ -8,36 +9,57 @@ void FileChangeUtil::FileChange(const FString& fileChanged)
 {
 	FString wordbeeInitPath = FPaths::ProjectSavedDir() / TEXT("Wordbee") / TEXT("Localization") / fileChanged;
 	FString LocDir = FPaths::ProjectContentDir() / TEXT("Localization") / fileChanged;
+	FString NormalizedPath = fileChanged;
+	FPaths::NormalizeFilename(NormalizedPath);  // Converts all \ to /
+	FString PathOnly = FPaths::GetPath(NormalizedPath);
 	TArray<FString> Parts;
-	FString langCode = fileChanged.ParseIntoArray(Parts, TEXT("/"), true) > 0 ? Parts[1] : TEXT("");
+	PathOnly.ParseIntoArray(Parts, TEXT("/"), true);
+	FString langCode = Parts.Num() > 0 ? Parts.Last() : TEXT("");
 
 	FLocalizationData fileIni = ParseLocalizationData(wordbeeInitPath);
 	FLocalizationData fileLoc = ParseLocalizationData(LocDir);
 
-	FDocumentData document = SingletonUtil::GetFromIni<FDocumentData>();
-	
-	for (const FSubnamespace& SubnamespaceIni : fileIni.Subnamespaces)
+	FDocumentData document = wordbee::SingletonUtil<FDocumentData>::GetFromIni();
+	// Map for quick lookup of existing records in Document
+	TMap<FString, FRecord*> DocumentRecordMap;
+	for (FRecord& Record : document.records)
 	{
-		for (const FSubnamespace& SubnamespaceLoc : fileLoc.Subnamespaces)
+		DocumentRecordMap.Add(Record.recordID, &Record);
+	}
+
+	// Loop through loc (new data)
+	for (const FSubnamespace& SubnamespaceLoc : fileLoc.Subnamespaces)
+	{
+		// Try to find matching subnamespace in ini (old)
+		const FSubnamespace* MatchingIni = fileIni.Subnamespaces.FindByPredicate(
+			[&](const FSubnamespace& IniSub) { return IniSub.Namespace == SubnamespaceLoc.Namespace; }
+		);
+
+		for (const FTranslationEntry& EntryLoc : SubnamespaceLoc.Children)
 		{
-			if (SubnamespaceIni.Namespace == SubnamespaceLoc.Namespace)
+			bool bIsExistingKey = false;
+			FString OldText = TEXT("");
+
+			if (MatchingIni)
 			{
-				for (const FTranslationEntry& EntryIni : SubnamespaceIni.Children)
+				const FTranslationEntry* EntryIni = MatchingIni->Children.FindByPredicate(
+					[&](const FTranslationEntry& Entry) { return Entry.Key == EntryLoc.Key; }
+				);
+
+				if (EntryIni)
 				{
-					for (const FTranslationEntry& EntryLoc : SubnamespaceLoc.Children)
-					{
-						if (EntryIni.Key == EntryLoc.Key && EntryIni.Translation.Text != EntryLoc.Translation.Text)
-						{
-							UE_LOG(LogTemp, Warning, TEXT("Key: %s - Old Translation: %s - New Translation: %s"),
-								*EntryIni.Key, *EntryIni.Translation.Text, *EntryLoc.Translation.Text);
-							UpdateDocumentData(document, EntryIni.Key, langCode, EntryLoc.Translation.Text);
-						}
-					}
+					bIsExistingKey = true;
+					OldText = EntryIni->Translation.Text;
 				}
+			}
+
+			// Update if the text differs
+			if ((bIsExistingKey && OldText != EntryLoc.Translation.Text) || !bIsExistingKey)
+			{
+				UpdateDocumentData(document, EntryLoc.Key, langCode, EntryLoc.Translation.Text);
 			}
 		}
 	}
-
 }
 
 FLocalizationData FileChangeUtil::ParseLocalizationData(const FString& filePath)
@@ -78,7 +100,7 @@ void FileChangeUtil::UpdateRecord(const FRecord& Record)
 
 TArray<FRecord> FileChangeUtil::GetCurrentRecords()
 {
-	FDocumentData document = SingletonUtil::GetFromIni<FDocumentData>();
+	FDocumentData document = wordbee::SingletonUtil<FDocumentData>::GetFromIni();
 	TArray<FRecord> records;
 	for (int i = 0; i < document.records.Num(); i++)
 	{
@@ -88,31 +110,59 @@ TArray<FRecord> FileChangeUtil::GetCurrentRecords()
 	return records;
 }
 
-void FileChangeUtil::UpdateDocumentData(FDocumentData& Document, const FString& Key, const FString& langCode,
-	const FString& Text)
+void FileChangeUtil::UpdateDocumentData(FDocumentData& Document, const FString& Key, const FString& langCode, const FString& Text)
 {
+	bool bRecordFound = false;
+
 	for (int i = 0; i < Document.records.Num(); i++)
 	{
 		if (Document.records[i].recordID.Equals(Key))
 		{
-			TArray<FColumn> cols = Document.records[i].columns;
-			for (int j = 0; j < cols.Num(); j++)
+			bRecordFound = true;
+			bool bColumnFound = false;
+
+			for (int j = 0; j < Document.records[i].columns.Num(); j++)
 			{
-				if (cols[j].columnID.Equals(langCode))
+				if (Document.records[i].columns[j].columnID.Equals(langCode))
 				{
-					cols[j].text = Text;
-					Document.records[i].columns = cols;
+					Document.records[i].columns[j].text = Text;
 					UpdateRecord(Document.records[i]);
-					break;
+					wordbee::SingletonUtil<FDocumentData>::SaveToIni(Document);
+					return;
 				}
 			}
-			break;
+
+			// If the column doesn't exist, add it
+			if (!bColumnFound)
+			{
+				FColumn NewColumn;
+				NewColumn.columnID = langCode;
+				NewColumn.text = Text;
+				Document.records[i].columns.Add(NewColumn);
+				UpdateRecord(Document.records[i]);
+				wordbee::SingletonUtil<FDocumentData>::SaveToIni(Document);
+				return;
+			}
 		}
 	}
 
-	SingletonUtil::SaveToIni(Document);
-	// Update the record in the localizeUtil->RecordsChanged
+	// If the record doesn't exist, create it
+	if (!bRecordFound)
+	{
+		FRecord NewRecord;
+		NewRecord.recordID = Key;
+
+		FColumn NewColumn;
+		NewColumn.columnID = langCode;
+		NewColumn.text = Text;
+
+		NewRecord.columns.Add(NewColumn);
+		Document.records.Add(NewRecord);
+		UpdateRecord(NewRecord);
+	}
+	wordbee::SingletonUtil<FDocumentData>::SaveToIni(Document);
 }
+
 
 void FileChangeUtil::CopyLocalizeToSaved()
 {

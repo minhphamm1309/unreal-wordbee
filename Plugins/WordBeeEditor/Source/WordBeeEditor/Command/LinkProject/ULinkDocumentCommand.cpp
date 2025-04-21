@@ -265,7 +265,7 @@ FString ULinkDocumentCommand::GetConvertedLanguage(const FString& Key, const TAr
 void ULinkDocumentCommand::SaveDocument(const FWordbeeDocument& resDocument, const FString& projectId,
                                         const FString& projectName, const FString& documentName)
 {
-	FDocumentData document = SingletonUtil::GetFromIni<FDocumentData>();
+	FDocumentData document = wordbee::SingletonUtil<FDocumentData>::GetFromIni();
 	if (resDocument.Type.IsEmpty())
 	{
 		UE_LOG(LogTemp, Warning, TEXT("resDocument.Type.IsEmpty"));
@@ -275,5 +275,5 @@ void ULinkDocumentCommand::SaveDocument(const FWordbeeDocument& resDocument, con
 	{
 		UpdateDocument(document, resDocument, projectId, projectName, documentName);
 	}
-	SingletonUtil::SaveToIni(document);
+	wordbee::SingletonUtil<FDocumentData>::SaveToIni(document);
 }

@@ -1,4 +1,5 @@
 #pragma once
+#include "WordBeeEditor/Models/FDocumentInfo.h"
 #include "WordBeeEditor/Models/FEditorConfig.h"
 
 class CronJobHandler
@@ -11,4 +12,5 @@ private:
 	FTSTicker::FDelegateHandle TickHandle;
 	double LastSyncTime;
 	FEditorConfig Config;
+	TSharedPtr<FDocumentInfo> DocInfo = nullptr;
 };

@@ -30,6 +30,15 @@ public:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="UserData")
 	int32 DocumentId;
+	bool IsValid() const
+	{
+		return !Url.IsEmpty()
+			&& !AccountId.IsEmpty()
+			&& !ApiKey.IsEmpty()
+			&& !AuthToken.IsEmpty()
+			&& !ProjectId.IsEmpty()
+			&& DocumentId != 0; // Assuming 0 is invalid
+	}
 };
 
 

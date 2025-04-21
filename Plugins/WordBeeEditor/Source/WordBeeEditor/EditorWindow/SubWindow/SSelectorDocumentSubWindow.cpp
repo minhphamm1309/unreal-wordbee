@@ -152,32 +152,8 @@ FReply SSelectorDocumentSubWindow::LinkAndCloseWindow()
 		{
 			bIsReadyToLink = false;
 			ButtonLinkStateText = FText::FromString("Linking...");
-			ULinkDocumentCommand::Execute(UserData, DocumentId, FOnLinkDocumentComplete::CreateLambda(
-                  [this](bool bSuccess, const FWordbeeDocument& Document)
-                  {
-                      if (bSuccess)
-                      {
-                          ButtonLinkStateText = FText::FromString("UnLink");
-         //                  FString documentName = DocumentDataArray.FindByPredicate(
-         //                      [&](const FDocumentDataResponse& Doc)
-         //                      {
-	        //                       return Doc.Id == DocumentId;
-         //                      })->Name;
-         //              		FString projectName = DocumentDataArray.FindByPredicate(
-							  // [&](const FDocumentDataResponse& Doc)
-							  // {
-	        //                       return Doc.Id == DocumentId;
-							  // })->Preference;
-         //                  ULinkDocumentCommand::SaveDocument(
-         //                      Document, ProjectId, projectName, documentName);
-                          OnSubWindowClosed.Execute(true, ProjectId, DocumentId);
-                      }
-                      else
-                      {
-                          bIsReadyToLink = true;
-                          ButtonLinkStateText = FText::FromString("Link Failed");
-                      }
-                  }));
+			ButtonLinkStateText = FText::FromString("UnLink");
+			OnSubWindowClosed.Execute(true, ProjectId, DocumentId);
 		}
 		else
 		{

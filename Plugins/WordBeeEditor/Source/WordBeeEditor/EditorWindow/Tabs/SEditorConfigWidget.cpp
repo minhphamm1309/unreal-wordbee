@@ -1,7 +1,7 @@
 #include "SEditorConfigWidget.h"
+#include "SDocumentInfo.h"
 #include "Framework/Notifications/NotificationManager.h"
 #include "Styling/AppStyle.h"  // Replaces FEditorStyle for UE5 compatibility
-#include "WordbeeEditor/API/API.h"
 #include "Internationalization/Culture.h"
 #include "Internationalization/Internationalization.h"
 #include "Widgets/Notifications/SNotificationList.h"
@@ -14,13 +14,14 @@ class ULocalizationSettings;
 
 void SEditorConfigWidget::Construct(const FArguments& InArgs)
 {
-	Config = SingletonUtil::GetFromIni<FEditorConfig>();
+	Config = wordbee::SingletonUtil<FEditorConfig>::GetFromIni();
 	TargetSyncOptions = {
-		MakeShared<FString>(TEXT("IfAnyProblem")),
-		MakeShared<FString>(TEXT("IfAllProblem")),
-		MakeShared<FString>(TEXT("IfNotAllOk")),
-		MakeShared<FString>(TEXT("None"))
+		MakeShared<FTargetSyncOption>(TEXT("Skip Segment if Any Sub Segment Has Error Status"), TEXT("IfAnyProblem")),
+		MakeShared<FTargetSyncOption>(TEXT("Skip Segment if All Sub Segments Have Error Status"), TEXT("IfAllProblem")),
+		MakeShared<FTargetSyncOption>(TEXT("Sync Segment if All Sub Segments Have Confirmed Status"), TEXT("IfNotAllOk")),
+		MakeShared<FTargetSyncOption>(TEXT("Sync All Segments Regardless of Status"), TEXT("None"))
 	};
+
 	ChildSlot
 	[
 		SNew(SScrollBox)
@@ -77,7 +78,11 @@ void SEditorConfigWidget::Construct(const FArguments& InArgs)
 				.VAlign(VAlign_Center)
 				[
 					SNew(SEditableTextBox)
-		                  .Text(FText::AsNumber(Config.SyncIntervalSeconds/60))
+						.Text_Lambda([this]()
+								{
+								return FText::AsNumber(Config.SyncIntervalSeconds / 60);
+								})
+
 		                  .IsEnabled_Lambda([this]()
 		                  {
 		                      return Config.bAutoSyncEnabled;
@@ -102,40 +107,23 @@ void SEditorConfigWidget::Construct(const FArguments& InArgs)
 			.AutoHeight()
 			.Padding(5)
 			[
-				SNew(SComboBox<TSharedPtr<FString>>)
+				SNew(SComboBox<TSharedPtr<FTargetSyncOption>>)
 				.OptionsSource(&TargetSyncOptions)
 				.OnSelectionChanged(this, &SEditorConfigWidget::OnTargetSyncChanged)
 				.OnGenerateWidget(this, &SEditorConfigWidget::MakeComboWidget)
-				.InitiallySelectedItem(GetCurrentTargetSyncOption()) // Set the initial selection
+				.InitiallySelectedItem(GetCurrentTargetSyncOption())
 				[
 					SNew(STextBlock)
 					.Text_Lambda([this]()
 					{
-						return FText::FromString(Config.TargetSynchronization);
-					}) // Bind text dynamically
+						TSharedPtr<FTargetSyncOption> Found = GetCurrentTargetSyncOption();
+						return Found.IsValid()
+							       ? FText::FromString(Found->DisplayName)
+							       : FText::FromString("Select an Option");
+					})
 				]
+
 			]
-			// // String Table Picker
-			// + SVerticalBox::Slot()
-			// .AutoHeight()
-			// .Padding(5)
-			// [
-			// 	SNew(STextBlock)
-			// 	.Text(FText::FromString("Select String Table"))
-			// 	.Font(FAppStyle::Get().GetFontStyle("NormalFont"))
-			// ]
-			// + SVerticalBox::Slot()
-			// .AutoHeight()
-			// .Padding(5)
-			// [
-			// 	SNew(SObjectPropertyEntryBox)
-			// 	.AllowedClass(UStringTable::StaticClass())
-			// 	.ObjectPath(TAttribute<FString>::Create([this]() -> FString
-			// 	{
-			// 		return Config.SelectedCollectionPath;
-			// 	}))
-			// 	.OnObjectChanged(this, &SEditorConfigWidget::OnStringTableSelected)
-			// ]
 			
 			// Save Button
 			+ SVerticalBox::Slot()
@@ -151,27 +139,6 @@ void SEditorConfigWidget::Construct(const FArguments& InArgs)
 			.Padding(5)
 			[
 				SNew(SHorizontalBox)
-
-				// Reload Button (Curved Arrow Icon)
-				+ SHorizontalBox::Slot()
-				.AutoWidth()
-				.Padding(5, 0)
-				[
-					SNew(SButton)
-					             .ButtonStyle(FAppStyle::Get(), "HoverHintOnly") // Style for minimal appearance
-					             .OnClicked(this, &SEditorConfigWidget::OnReloadLanguagesClicked)
-					             .ToolTipText(FText::FromString("Reload Missing and Common Languages"))
-					             .IsEnabled_Lambda([this]() { return !bIsFetching; }) // Disable when fetching
-					             .Cursor(EMouseCursor::Hand) // Change cursor on hover
-					[
-						SNew(SImage)
-						.Image(FAppStyle::Get().GetBrush("Icons.Refresh"))
-					]
-					[
-						SNew(SImage)
-						.Image(FAppStyle::Get().GetBrush("Icons.Refresh"))
-					]
-				]
 
 				// Missing Languages Dropdown
 				+ SHorizontalBox::Slot()
@@ -218,22 +185,21 @@ void SEditorConfigWidget::Construct(const FArguments& InArgs)
 				]
 			]
 
-			// Language Selection List with Checkboxes
 			+ SVerticalBox::Slot()
 			.AutoHeight()
 			.Padding(5)
 			[
-				SNew(SScrollBox)
-				.Orientation(Orient_Horizontal) // Set horizontal scrolling
-				+ SScrollBox::Slot()
+				SNew(SBox)
+				.MaxDesiredHeight(300) // You can adjust this height!
 				[
-					SAssignNew(CommonLocalesListView, SListView<TSharedPtr<FLanguageInfo>>)
-					.ItemHeight(24)
+					SAssignNew(CommonLocalesTileView, STileView<TSharedPtr<FLanguageInfo>>)
+					.ItemWidth(120)  // Width per tile
+					.ItemHeight(40)  // Height per tile
 					.ListItemsSource(&CommonLocales)
-					.OnGenerateRow(this, &SEditorConfigWidget::GenerateLanguageCheckbox)
-					.Orientation(EOrientation::Orient_Horizontal) // Ensure horizontal orientation
+					.OnGenerateTile(this, &SEditorConfigWidget::GenerateLanguageTile)
 				]
 			]
+
 			// Pull Data Region Label
 			+ SVerticalBox::Slot()
 			.AutoHeight()
@@ -250,11 +216,12 @@ void SEditorConfigWidget::Construct(const FArguments& InArgs)
 			.Padding(5)
 			[
 				SNew(SButton)
-				             .HAlign(HAlign_Fill) // Make it full-width
-				             .Text(FText::FromString("Pull Data"))
-				             .HAlign(HAlign_Center) // Center horizontally
-				             .VAlign(VAlign_Center)
-				             .OnClicked(this, &SEditorConfigWidget::OnCPullButtonClicked)
+		             .HAlign(HAlign_Fill) // Make it full-width
+		             .Text(FText::FromString("Pull Data"))
+		             .HAlign(HAlign_Center) // Center horizontally
+		             .VAlign(VAlign_Center)
+		             .OnClicked(this, &SEditorConfigWidget::OnCPullButtonClicked)
+					.IsEnabled_Lambda([this]() { return !bIsSyncInProgress; })
 			]
 
 			// Push Data Region Label
@@ -283,7 +250,6 @@ void SEditorConfigWidget::Construct(const FArguments& InArgs)
 				[
 					SAssignNew(pushOnlyChangedCheckbox, SCheckBox)
 					.AccessibleText(FText::FromString("Push Only changed data"))
-					.OnCheckStateChanged(this, &SEditorConfigWidget::OnPushCheckboxChanged)
 				]
 			]
 
@@ -293,46 +259,45 @@ void SEditorConfigWidget::Construct(const FArguments& InArgs)
 			.Padding(5)
 			[
 				SNew(SButton)
-				             .HAlign(HAlign_Fill) // Make it full-width
-				             .Text(FText::FromString("Push Data"))
-				             .HAlign(HAlign_Center) // Center horizontally
-				             .VAlign(VAlign_Center)
-				             .OnClicked(this, &SEditorConfigWidget::OnPushButtonClicked)
+	             .HAlign(HAlign_Fill) // Make it full-width
+	             .Text(FText::FromString("Push Data"))
+	             .HAlign(HAlign_Center) // Center horizontally
+	             .VAlign(VAlign_Center)
+	             .OnClicked(this, &SEditorConfigWidget::OnPushButtonClicked)
+				.IsEnabled_Lambda([this]() { return !bIsSyncInProgress; })
 			]
 		]
 	];
 }
 
-void SEditorConfigWidget::OnPushCheckboxChanged(ECheckBoxState CheckBoxState)
-{
-}
-
-TSharedRef<ITableRow> SEditorConfigWidget::GenerateLanguageCheckbox(TSharedPtr<FLanguageInfo> Item,
-                                                                    const TSharedRef<STableViewBase>& OwnerTable)
+TSharedRef<ITableRow> SEditorConfigWidget::GenerateLanguageTile(TSharedPtr<FLanguageInfo> Item,
+																const TSharedRef<STableViewBase>& OwnerTable)
 {
 	return SNew(STableRow<TSharedPtr<FLanguageInfo>>, OwnerTable)
+	[
+		SNew(SHorizontalBox)
+		+ SHorizontalBox::Slot()
+		.AutoWidth()
+		.Padding(5)
 		[
-			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot()
-			.AutoWidth()
-			.Padding(FMargin(0, 0, 10, 0))
+			SNew(SCheckBox)
+			.IsChecked_Lambda([Item]() { return Item->IsSelected || Item->Src=="true"? ECheckBoxState::Checked : ECheckBoxState::Unchecked; })
+			.IsEnabled_Lambda([Item]() { return Item->Src != "true"; })
+			.OnCheckStateChanged_Lambda([Item](ECheckBoxState State)
+			{
+				if (Item->Src != "true") // Only allow changing non-source items
+				{
+					Item->IsSelected = (State == ECheckBoxState::Checked);
+				}
+			})
 			[
-				SNew(SCheckBox)
-				.IsChecked_Lambda([this, Item]() -> ECheckBoxState
-				{
-					return Item->IsSelected ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
-				})
-				.OnCheckStateChanged_Lambda([this, Item](ECheckBoxState NewState)
-				{
-					// Update the IsSelected property of the language
-					Item->IsSelected = (NewState == ECheckBoxState::Checked);
-				})
-				[
-					SNew(STextBlock)
+				SNew(STextBlock)
 					.Text(FText::FromString(Item->T))
-				]
+					.MinDesiredWidth(80)   // force a minimum readable width
+					.WrapTextAt(100) 
 			]
-		];
+		]
+	];
 }
 
 void SEditorConfigWidget::OnAutoSyncChanged(ECheckBoxState NewState)
@@ -343,23 +308,24 @@ void SEditorConfigWidget::OnAutoSyncChanged(ECheckBoxState NewState)
 void SEditorConfigWidget::OnSyncIntervalChanged(const FText& NewText, ETextCommit::Type CommitType)
 {
 	int32 EnteredMinutes = FCString::Atoi(*NewText.ToString());
-	EnteredMinutes = FMath::Clamp(EnteredMinutes, 5, 30);
+	EnteredMinutes = FMath::Clamp(EnteredMinutes, 1, 30);
 	Config.SyncIntervalSeconds = EnteredMinutes * 60;
 }
 
-void SEditorConfigWidget::OnTargetSyncChanged(TSharedPtr<FString> NewValue, ESelectInfo::Type)
+void SEditorConfigWidget::OnTargetSyncChanged(TSharedPtr<FTargetSyncOption> NewValue, ESelectInfo::Type)
 {
 	if (NewValue.IsValid())
 	{
-		Config.TargetSynchronization = *NewValue;
+		Config.TargetSynchronization = NewValue->Value;
 	}
 }
 
-TSharedPtr<FString> SEditorConfigWidget::GetCurrentTargetSyncOption() const
+
+TSharedPtr<FTargetSyncOption> SEditorConfigWidget::GetCurrentTargetSyncOption() const
 {
-	for (const TSharedPtr<FString>& Option : TargetSyncOptions)
+	for (const TSharedPtr<FTargetSyncOption>& Option : TargetSyncOptions)
 	{
-		if (*Option == Config.TargetSynchronization)
+		if (Option->Value == Config.TargetSynchronization)
 		{
 			return Option;
 		}
@@ -367,15 +333,12 @@ TSharedPtr<FString> SEditorConfigWidget::GetCurrentTargetSyncOption() const
 	return nullptr;
 }
 
-TSharedRef<SWidget> SEditorConfigWidget::MakeComboWidget(TSharedPtr<FString> InOption)
+
+TSharedRef<SWidget> SEditorConfigWidget::MakeComboWidget(TSharedPtr<FTargetSyncOption> InOption)
 {
-	return SNew(STextBlock).Text(FText::FromString(*InOption));
+	return SNew(STextBlock).Text(FText::FromString(InOption->DisplayName));
 }
 
-void SEditorConfigWidget::OnStringTableSelected(const FAssetData& AssetData)
-{
-	Config.SelectedCollectionPath = AssetData.GetObjectPathString();
-}
 
 TSharedRef<SWidget> SEditorConfigWidget::GenerateLanguageOption(TSharedPtr<FLanguageInfo> Item)
 {
@@ -386,43 +349,42 @@ TSharedRef<SWidget> SEditorConfigWidget::GenerateLanguageOption(TSharedPtr<FLang
 
 FReply SEditorConfigWidget::OnSaveClicked()
 {
-	SingletonUtil::SaveToIni<FEditorConfig>(Config);
+	wordbee::SingletonUtil<FEditorConfig>::SaveToIni(Config);
 	FMessageDialog::Open(EAppMsgType::Ok, FText::FromString("Configuration saved successfully!"));
 	return FReply::Handled();
 }
 
 FReply SEditorConfigWidget::OnCPullButtonClicked()
 {
+	bIsSyncInProgress = true;
 	// Create the shared pointer directly
 	TSharedPtr<TArray<FString>> SelectedLanguages = MakeShared<TArray<FString>>();
-	FString srcCode;
 	for (const TSharedPtr<FLanguageInfo>& Lang : CommonLocales)
 	{
 		if (Lang.IsValid())
 		{
-			if (Lang->Src=="true")
-			{
-				srcCode = Lang->V;
-				SelectedLanguages->Add(srcCode);
-			}
-			else if (Lang->IsSelected)
+			if (Lang->IsSelected)
 			{
 				SelectedLanguages->Add(Lang->V);
 			}
 		}
 	}
-	if (SelectedLanguages->Num() < 2)
+	if (SelectedLanguages->Num() < 1)
 	{
-		FMessageDialog::Open(EAppMsgType::Ok, FText::FromString("You must select at least one language."));
+		FMessageDialog::Open(EAppMsgType::Ok, FText::FromString("No document linked."));
+		bIsSyncInProgress = false;
 		return FReply::Handled();
 	}
-	DocumentService::PullDocument(SelectedLanguages, srcCode);
+	DocumentService::PullDocument(SelectedLanguages, DocInfo->Src.V, [this](bool bSuccess) {
+		bIsSyncInProgress = false;
+	});
 	return FReply::Handled();
 }
 
 
 FReply SEditorConfigWidget::OnPushButtonClicked()
 {
+	bIsSyncInProgress = true;
 	TSharedPtr<TArray<FString>> SelectedLanguages = MakeShared<TArray<FString>>();
 	for (const TSharedPtr<FLanguageInfo>& Lang : CommonLocales)
 	{
@@ -431,7 +393,19 @@ FReply SEditorConfigWidget::OnPushButtonClicked()
 			SelectedLanguages->Add(Lang->V);
 		}
 	}
-	DocumentService::PushDocument(SelectedLanguages, pushOnlyChangedCheckbox.Get()->IsChecked());
+	if (SelectedLanguages->Num() < 1)
+	{
+		FMessageDialog::Open(EAppMsgType::Ok, FText::FromString("No document linked."));
+		bIsSyncInProgress = false;
+		return FReply::Handled();
+	}
+	DocumentService::PushDocument(SelectedLanguages, pushOnlyChangedCheckbox.Get()->IsChecked(), [this](bool bSuccess) {
+		if (!bSuccess)
+		{
+			FMessageDialog::Open(EAppMsgType::Ok, FText::FromString(" No data to push to Wordbee."));
+		}
+		bIsSyncInProgress = false;
+	});
 	return FReply::Handled();
 }
 
@@ -452,20 +426,12 @@ void SEditorConfigWidget::OnLanguageCheckboxChanged(ECheckBoxState NewState)
 		// Set all CommonLocales' IsSelected to false
 		for (const TSharedPtr<FLanguageInfo>& Lang : CommonLocales)
 		{
-			Lang->IsSelected = false;
+			if (Lang->Src != "true")
+			{
+				Lang->IsSelected = false;
+			}
 		}
 	}
-}
-
-FReply SEditorConfigWidget::OnReloadLanguagesClicked()
-{
-	if (bIsFetching)
-	{
-		return FReply::Handled();
-	}
-	bIsFetching = true; // Start fetching, disable the button
-	FetchLangsFromAPI();
-	return FReply::Handled();
 }
 
 void SEditorConfigWidget::FetchLangsFromAPI()
@@ -473,13 +439,19 @@ void SEditorConfigWidget::FetchLangsFromAPI()
 	bAllLangsChecked = false;
 	MissingLocales.Empty();
 	CommonLocales.Empty();
-	UserInfo = SingletonUtil::GetFromIni<FWordbeeUserData>();
-	API::FetchLanguages(UserInfo, [this](const TArray<FLanguageInfo>& Languages)
-    {
-        bIsFetching = false;
-        TArray<FString> UnrealLocales;
-        UnrealLocales = FTextLocalizationManager::Get().GetLocalizedCultureNames(
-            ELocalizationLoadFlags::Engine);
+	DocInfo = SDocumentInfo::CachedDocumentInfo;
+	if (!DocInfo.IsValid())
+	{
+		CommonLocalesTileView->RequestListRefresh();
+		MissingLocalesCbo->RefreshOptions();
+		return;
+	}
+	TArray<FLanguageInfo> Languages = DocInfo->Trgs;
+	auto srcLang = DocInfo->Src;
+	srcLang.IsSelected = true;
+	srcLang.Src="true";
+	Languages.Add(srcLang);
+        TArray<FString> UnrealLocales = FTextLocalizationManager::Get().GetLocalizedCultureNames(ELocalizationLoadFlags::Game);
         for (const FString& UnrealLocale : UnrealLocales)
         {
             TSharedPtr<FCulture> Culture = FInternationalization::Get().GetCulture(UnrealLocale);
@@ -502,14 +474,8 @@ void SEditorConfigWidget::FetchLangsFromAPI()
         {
 			CommonLocales.Add(MakeShared<FLanguageInfo>(WbLocale));
 		}
-        CommonLocalesListView->RequestListRefresh();
+		CommonLocalesTileView->RequestListRefresh();
         MissingLocalesCbo->RefreshOptions();
-        ShowNotification("Languages reloaded successfully!", true);
-    }, [this](const FString& ErrorMessage)
-    {
-        bIsFetching = false;
-        ShowNotification("Failed to reload languages: " + ErrorMessage, false);
-    });
 }
 
 void SEditorConfigWidget::ShowNotification(const FString& Message, bool bSuccess)
@@ -520,3 +486,4 @@ void SEditorConfigWidget::ShowNotification(const FString& Message, bool bSuccess
 	Info.Image = bSuccess ? FAppStyle::Get().GetBrush("Icons.Success") : FAppStyle::Get().GetBrush("Icons.Error");
 	FSlateNotificationManager::Get().AddNotification(Info);
 }
+

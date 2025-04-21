@@ -28,21 +28,7 @@ private:
 	void OnMaxLengthChanged(const FText& NewText);
 	void OnVTextCommitted(const FText& NewText, ETextCommit::Type CommitType, TSharedPtr<FCustomField> Item);
 	TSharedRef<ITableRow> OnGenerateRow(TSharedPtr<FCustomField> Item, const TSharedRef<STableViewBase>& OwnerTable);
-	TArray<TSharedPtr<FString>> AvailableStringTables;
-	TArray<TSharedPtr<FString>> AvailableKeys;
-
-	TSharedPtr<FString> SelectedStringTable;
-	TSharedPtr<FString> SelectedKey;
-
-	TSharedPtr<SSearchableComboBox> StringTableComboBox;
-	TSharedPtr<SSearchableComboBox> KeyComboBox;
 	TSharedPtr<SListView<TSharedPtr<FCustomField>>> CustomFieldsListView;
-
-	void PopulateStringTables();
-	void PopulateLocalizationKeys();
-
-	void OnStringTableSelected(TSharedPtr<FString> NewValue, ESelectInfo::Type);
-	void OnKeySelected(TSharedPtr<FString> NewValue, ESelectInfo::Type);
 	static void AddCustomFieldsFromSegment(const FWordbeeDocument& Doc, TArray<TSharedPtr<FCustomField>>& OutCustomFields);
 	void OnKeyChanged(const FText& NewText);
 	FReply OnGetDataClicked();

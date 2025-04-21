@@ -8,6 +8,22 @@
 // Construct the Widget
 void SKeyViewerWidget::Construct(const FArguments& InArgs)
 {
+	userinfo = wordbee::SingletonUtil<FWordbeeUserData>().GetFromIni();
+	if (!userinfo.IsValid())  // Assuming DocumentID is a FString or similar type
+	{
+		ChildSlot
+		[
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(5)
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString("Please link a document first"))
+			]
+		];
+		return; // Exit early if no DocumentID
+	}
 	ChildSlot
 	[
 		SNew(SVerticalBox)
@@ -113,6 +129,8 @@ void SKeyViewerWidget::Construct(const FArguments& InArgs)
 	];
 }
 
+
+
 void SKeyViewerWidget::OnMinLengthChanged(const FText& NewText)
 {
 	if (NewText.IsEmpty())
@@ -217,27 +235,6 @@ void SKeyViewerWidget::OnVTextCommitted(const FText& NewText, ETextCommit::Type 
 	}
 }
 
-// Populate String Tables
-void SKeyViewerWidget::PopulateStringTables()
-{
-}
-
-void SKeyViewerWidget::PopulateLocalizationKeys()
-{
-}
-
-// Handle String Table Selection
-void SKeyViewerWidget::OnStringTableSelected(TSharedPtr<FString> NewValue, ESelectInfo::Type)
-{
-	SelectedStringTable = NewValue;
-	PopulateLocalizationKeys();
-}
-
-// Handle Key Selection
-void SKeyViewerWidget::OnKeySelected(TSharedPtr<FString> NewValue, ESelectInfo::Type)
-{
-	SelectedKey = NewValue;
-}
 
 void SKeyViewerWidget::OnKeyChanged(const FText& NewText)
 {
@@ -248,7 +245,7 @@ FReply SKeyViewerWidget::OnGetDataClicked()
 {
 	bIsResetting = true;
 	ResetData();
-	userinfo = SingletonUtil::GetFromIni<FWordbeeUserData>();
+	userinfo = wordbee::SingletonUtil<FWordbeeUserData>::GetFromIni();
 	// Handle fetching data based on EnteredKey
 	API::PullDocument(userinfo, FString::FromInt(userinfo.DocumentId), FOnPullDocumentComplete::CreateLambda(
 		                  [this](FString Result)
@@ -316,7 +313,7 @@ FReply SKeyViewerWidget::OnUpdateClicked()
 		return FReply::Handled();
 	}
 	bIsUpdating = true;
-	userinfo = SingletonUtil::GetFromIni<FWordbeeUserData>();
+	userinfo = wordbee::SingletonUtil<FWordbeeUserData>::GetFromIni();
     segment.chmin =  FCString::Atoi(*MinLength.ToString());
     segment.chmax = FCString::Atoi(*MaxLength.ToString());
 	for (const TSharedPtr<FCustomField>& FieldPtr : CustomFields)
@@ -343,6 +340,7 @@ FReply SKeyViewerWidget::OnUpdateClicked()
 		 }));
     return FReply::Handled();
 }
+
 void SKeyViewerWidget::ResetData()
 {
 	MinLength = FText::FromString(TEXT(""));

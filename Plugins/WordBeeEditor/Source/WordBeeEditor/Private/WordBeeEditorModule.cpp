@@ -8,7 +8,7 @@
 #include "WordBeeEditor/EditorWindow/WordBeeEditorConfigWindow.h"
 #include "WordBeeEditor/Utils/FileChangeUtil.h"
 #include "WordBeeEditor/Utils/LocalizeUtil.h"
-#include "WordBeeEditor/Utils/SingletonUtil.h"
+#include "WordBeeEditor/Utils/Locate.h"
 
 void FWordBeeEditorModule::StartupModule()
 {

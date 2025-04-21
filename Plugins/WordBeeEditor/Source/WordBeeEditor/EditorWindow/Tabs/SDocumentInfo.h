@@ -2,6 +2,9 @@
 
 #include "CoreMinimal.h"
 #include "Widgets/SCompoundWidget.h"
+#include "WordBeeEditor/Models/FDocumentInfo.h"
+
+class SWordBeeEditorConfigWindow;
 
 class SDocumentInfo : public SCompoundWidget
 {
@@ -16,7 +19,9 @@ public:
     SLATE_END_ARGS()
 
     void Construct(const FArguments& InArgs);
-
+    void RefreshDocumentInfo(TFunction<void(bool)> OnFinish = nullptr);
+    static TSharedPtr<FDocumentInfo> CachedDocumentInfo;
+    void SetParentWindow(TWeakPtr<SWordBeeEditorConfigWindow> InParent);
 private:
     bool bIsFetching = false;
     FString DocumentID;
@@ -25,5 +30,7 @@ private:
     TArray<FString> TargetLanguages;
     FString LastTMSChange;
     FString LastSynchronization;
-    void RefreshDocumentInfo();
+    void ClearDocumentInfo();
+    TWeakPtr<SWordBeeEditorConfigWindow> ParentWindow;
+    void NotifyParent();
 };

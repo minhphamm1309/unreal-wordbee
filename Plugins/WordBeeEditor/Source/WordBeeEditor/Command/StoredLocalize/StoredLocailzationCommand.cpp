@@ -4,9 +4,8 @@
 #include "Internationalization/TextLocalizationManager.h"
 #include "Misc/ConfigCacheIni.h"
 #include "LocalizationSettings.h"
-#include "GeometryCollection/Facades/CollectionPositionTargetFacade.h"
 #include "HAL/PlatformFilemanager.h"
-
+FString StoredLocailzationCommand::LocalizationProjectName = TEXT("Game");
 void StoredLocailzationCommand::Execute( const TArray<FSegment>& Segments, FString src)
 {
 	// Get Locate codes
@@ -21,7 +20,7 @@ void StoredLocailzationCommand::Execute( const TArray<FSegment>& Segments, FStri
 	// init data
 	TArray<FLocalizationNamespaceM> Namespaces;
 	FLocalizationNamespaceM StringTableNamespace;
-	StringTableNamespace.Namespace = "Wordbee";
+	StringTableNamespace.Namespace = LocalizationProjectName;
 	TMap<FString, TArray<FLocalizeSegment>> LocalizeSegments;
 	for (const FSegment& Segment : Segments)
 	{
@@ -39,7 +38,7 @@ void StoredLocailzationCommand::Execute( const TArray<FSegment>& Segments, FStri
 		}
 	}
 	Namespaces.Add(StringTableNamespace);
-	CreateNewLocalizationTarget(TEXT("Wordbee"));
+	CreateNewLocalizationTarget(LocalizationProjectName);
 	// Create the localization manifest
 	GenerateLocalizationManifest(Namespaces);
 	// Create the localization settings
@@ -132,8 +131,6 @@ bool StoredLocailzationCommand::AddCultureIfNotSupported(const FString& CultureC
 	AddCultureToTargetSet(GameTargetSet);
 	
 	FTextLocalizationManager::Get().RefreshResources();
-	//FLocalizationConfigurationScript::UpdateConfigFilesFromSettings();
-	//FLocalizationConfigurationScript::Gen();
 	return true;
 }
 
@@ -193,7 +190,7 @@ void StoredLocailzationCommand::AddLocalizationEntryIni(const FString& CultureCo
 
 void StoredLocailzationCommand::AddLocalizationEntry(const TArray<FLocalizeSegment>& LocalizeSegments, FString CultureCode)
 {
-	FString OutputPath = FPaths::ProjectContentDir() / TEXT("Localization")/ TEXT("Wordbee") / CultureCode;
+	FString OutputPath = FPaths::ProjectContentDir() / TEXT("Localization")/ LocalizationProjectName / CultureCode;
 	// make sure the directory exists
 	if (!FPaths::DirectoryExists(OutputPath))
 	{
@@ -210,7 +207,7 @@ void StoredLocailzationCommand::AddLocalizationEntry(const TArray<FLocalizeSegme
     
     {
         TSharedPtr<FJsonObject> NamespaceObj = MakeShareable(new FJsonObject);
-        NamespaceObj->SetStringField("Namespace", "Wordbee");
+        NamespaceObj->SetStringField("Namespace", LocalizationProjectName);
         
         TArray<TSharedPtr<FJsonValue>> Children;
         
@@ -245,7 +242,7 @@ void StoredLocailzationCommand::AddLocalizationEntry(const TArray<FLocalizeSegme
     TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&OutputString);
     FJsonSerializer::Serialize(RootObject.ToSharedRef(), Writer);
 	
-    FString OutputFilePath = OutputPath / TEXT("Wordbee.archive");
+    FString OutputFilePath = OutputPath / (LocalizationProjectName + TEXT(".archive"));
     FFileHelper::SaveStringToFile(OutputString, *OutputFilePath);
 }
 
@@ -263,7 +260,7 @@ FLocalizationTextEntryM StoredLocailzationCommand::ParseToManifest(const FString
 
 void StoredLocailzationCommand::GenerateLocalizationManifest(TArray<FLocalizationNamespaceM> Namespaces)
 {
-	FString OutputPath = FPaths::ProjectContentDir() / TEXT("Localization")/ TEXT("Wordbee");
+	FString OutputPath = FPaths::ProjectContentDir() / TEXT("Localization")/ LocalizationProjectName;
 	// make sure the directory exists
 	if (!FPaths::DirectoryExists(OutputPath))
 	{
@@ -288,10 +285,10 @@ void StoredLocailzationCommand::GenerateLocalizationManifest(TArray<FLocalizatio
 	TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&OutputString);
 	FJsonSerializer::Serialize(RootObject.ToSharedRef(), Writer);
 	
-	FString OutputFilePath = OutputPath / TEXT("Wordbee.manifest");
+	FString OutputFilePath = OutputPath / (LocalizationProjectName + TEXT(".manifest"));
 	FFileHelper::SaveStringToFile(OutputString, *OutputFilePath);
 
-	FString OutputFileConflictPath = OutputPath / TEXT("Wordbee_Conflicts.txt");
+	FString OutputFileConflictPath = OutputPath / (LocalizationProjectName + TEXT("_Conflicts.txt"));
 	FFileHelper::SaveStringToFile(TEXT(""), *OutputFileConflictPath);
 }
 

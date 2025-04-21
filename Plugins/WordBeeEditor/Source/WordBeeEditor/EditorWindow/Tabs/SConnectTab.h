@@ -1,10 +1,8 @@
 #pragma once
 #include "WordBeeEditor/Command/DocumentList/FDocumentDataResponse.h"
 #include "WordBeeEditor/Models/WordbeeUserData.h"
-#include "WordBeeEditor/Command/DocumentList/FDocumentDataResponse.h"
-#include "WordBeeEditor/Models/WordbeeResponse.h"
 
-
+class SWordBeeEditorConfigWindow;
 class SConnectTab : public SCompoundWidget 
 {
 public:
@@ -13,7 +11,7 @@ public:
 	
 	/** Constructs this widget with InArgs */
 	void Construct(const FArguments& InArgs);
-
+	void SetParentWindow(TWeakPtr<SWordBeeEditorConfigWindow> InParent);
 private:
 	// Add functions for button click, etc.
 	FReply OnConnectButtonClicked();
@@ -37,7 +35,6 @@ private:
 	FText ButtonConnectStateText;
 	bool bIsAuthenticated = false;
 	bool bIsDocumentsFetched = false;
-	bool bIsDocumentLinked = false;
 	bool bIsLinkReadyToClick{true};
 
 	FText GetLinkButtonText() const;
@@ -56,6 +53,8 @@ private:
 	void OnFetchDocumentsResponseReceived(const TArray<FDocumentDataResponse>& response);
 	void OnSubWindowClosed(bool isLinked, FString InProjectId, FString InDocumentId);
 	void OnSubWindowClosed(bool isLinked, FString InProjectId, FString InDocumentId) const;
+	TWeakPtr<SWordBeeEditorConfigWindow> ParentWindow;
+	void NotifyParent();
 };
 
 

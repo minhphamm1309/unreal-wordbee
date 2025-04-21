@@ -74,8 +74,9 @@ public:
 	static FLocalizationTextEntryM ParseToManifest(const FString& Key, const FString& String);
 	static void GenerateLocalizationManifest(TArray<FLocalizationNamespaceM> Array);
 	static void CreateNewLocalizationTarget(const FString& Key);
-
 	static void AddCultureToSupportedList(FString& InputString, const FString& NewCulture);
-
+	
+private:
+	static FString LocalizationProjectName;
 };
 

@@ -2,13 +2,15 @@
 
 #include "WordBeeEditor/API/API.h"
 #include "WordBeeEditor/Command/DocumentList/UGetDocumentsCommand.h"
-#include "WordBeeEditor/Command/LinkProject/ULinkDocumentCommand.h"
 #include "WordBeeEditor/EditorWindow/SubWindow/SSelectorDocumentSubWindow.h"
 #include "WordBeeEditor/Utils/SingletonUtil.h"
+#include "WordBeeEditor/EditorWindow/WordBeeEditorConfigWindow.h"
+#include "WordBeeEditor/Models/FDocumentData.h"
 
 void SConnectTab::Construct(const FArguments& InArgs)
 {
-	UserInfo = SingletonUtil::GetFromIni<FWordbeeUserData>();
+	UserInfo = wordbee::SingletonUtil<FWordbeeUserData>::GetFromIni();
+	bIsAuthenticated = !UserInfo.AuthToken.IsEmpty();
 	SetConnectingState(false);
 	ChildSlot
 	[
@@ -202,46 +204,47 @@ FReply SConnectTab::OnSelectDocumentClicked()
 FReply SConnectTab::OnLinkDocumentClicked()
 {
 	FString SDocumentId = DocumentId->GetText().ToString();
-	if (DocumentId.IsValid()) 
-	{
-		UserInfo.DocumentId = FCString::Atoi(*SDocumentId);
-	}
-	if (!bIsDocumentLinked)
+	if (HasDocumentsFetched())
 	{
 		bIsLinkReadyToClick = false;
-		ULinkDocumentCommand::Execute(UserInfo, SDocumentId, FOnLinkDocumentComplete::CreateLambda(
-              [this , SDocumentId](bool bSuccess, const FWordbeeDocument& Document)
-              {
-              	  bIsLinkReadyToClick = true;
-                  if (bSuccess)
-                  {
-                      bIsDocumentLinked = true;
-                      int32 ProjectId = DocumentsData.FindByPredicate(
-                          [&](const FDocumentDataResponse& Doc)
-                          {
-                              return Doc.Id == SDocumentId;
-                          })->Pid;
-                  		UserInfo.ProjectId = FString::FromInt(ProjectId);
-                  	SaveSettings();
-                  }
-                  else
-                  {
-                      bIsDocumentLinked = false;
-                  }
-              }));
+		API::FetchDocumentById(UserInfo, SDocumentId, [this, SDocumentId](const FDocumentInfo& DocumentInfo)
+		{
+			bIsLinkReadyToClick = true;
+			UserInfo.DocumentId = FCString::Atoi(*SDocumentId);
+				  int32 ProjectId = DocumentsData.FindByPredicate(
+					  [&](const FDocumentDataResponse& Doc)
+					  {
+						  return Doc.Id == SDocumentId;
+					  })->Pid;
+					  UserInfo.ProjectId = FString::FromInt(ProjectId);
+				  SaveSettings();
+				  NotifyParent();
+		},
+		[this](const FString& ErrorMessage)
+		{
+			bIsLinkReadyToClick = true;
+			FMessageDialog::Open(EAppMsgType::Ok, FText::FromString(ErrorMessage));
+		});
 	}
-	bIsDocumentLinked = !bIsDocumentLinked;
+	else
+	{
+		UserInfo.DocumentId = 0;
+		UserInfo.ProjectId.Empty();
+		wordbee::SingletonUtil<FDocumentData>::ClearFromIni();
+		SaveSettings();
+		NotifyParent();
+	}
 	return FReply::Handled();
 }
 
 FText SConnectTab::GetLinkButtonText() const
 {
-	return bIsDocumentLinked ? FText::FromString("UnLink") : FText::FromString("Link");
+	return UserInfo.DocumentId != 0 ? FText::FromString("UnLink") : FText::FromString("Link");
 }
 
-void SConnectTab::SetConnectingState(bool bConnecting)
+void SConnectTab::SetConnectingState(bool bIsConnecting)
 {
-	this->bConnecting = bConnecting;
+	this->bConnecting = bIsConnecting;
 
 	// Change the button text based on the state
 	ButtonConnectStateText = bConnecting ? FText::FromString("Connecting...") : FText::FromString("Test Credentials");
@@ -288,7 +291,7 @@ void SConnectTab::SaveSettings()
 	UserInfo.Url = *URL->GetText().ToString();
 	UserInfo.AccountId = *AccountId->GetText().ToString();
 	UserInfo.ApiKey = *APIKey->GetText().ToString();
-	SingletonUtil::SaveToIni<FWordbeeUserData>(UserInfo);
+	wordbee::SingletonUtil<FWordbeeUserData>::SaveToIni(UserInfo);
 }
 
 void SConnectTab::LoadSettings() const
@@ -307,7 +310,7 @@ void SConnectTab::LoadDocumentSettings()
 
 bool SConnectTab::HasDocumentsFetched() const
 {
-	return bIsDocumentsFetched;
+	return bIsDocumentsFetched && UserInfo.DocumentId == 0;
 }
 
 void SConnectTab::SetDocumentsFetched()
@@ -336,8 +339,22 @@ void SConnectTab::OnSubWindowClosed(bool isLinked, FString InProjectId, FString 
 	ConnectionPanel->SetVisibility(EVisibility::Visible);
 	SubWindow->SetVisibility(EVisibility::Collapsed);
 	LinkPanel->SetVisibility(EVisibility::Visible);
-	bIsDocumentLinked = isLinked;
 	UserInfo.ProjectId = InProjectId;
 	UserInfo.DocumentId = FCString::Atoi(*InDocumentId);
 	SaveSettings();
+	NotifyParent();
+}
+
+void SConnectTab::SetParentWindow(TWeakPtr<SWordBeeEditorConfigWindow> InParent)
+{
+	ParentWindow = InParent;
+}
+
+void SConnectTab::NotifyParent()
+{
+	if (ParentWindow.IsValid())
+	{
+		TSharedPtr<SWordBeeEditorConfigWindow> Parent = ParentWindow.Pin();
+		Parent->OnDocumentChanged();
+	}
 }

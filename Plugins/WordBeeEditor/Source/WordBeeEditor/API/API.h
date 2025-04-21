@@ -32,7 +32,7 @@ public:
 	static  void Authenticate(FString AccountId, FString ApiKey, FString BaseUrl, FOnAuthCompleted callback);
 	static FString ConstructUrl(FString AccountId, FString BaseUrl, FString Router);
 	static void FetchDocumentById(FWordbeeUserData userInfo, const FString& DocumentId, TFunction<void(const FDocumentInfo&)> Callback,
-									TFunction<void(const FString&)> OnError = [](const FString& ErrorMessage) { UE_LOG(LogTemp, Error, TEXT("%s"), *ErrorMessage); },
+									TFunction<void(const FString&)> OnError = nullptr,
 									bool IsRetry=false);
 	static void PullDocument(FWordbeeUserData userInfo, const FString& DocumentId , FOnPullDocumentComplete callback, const TArray<FString>& Keys = {});
 	static  void CheckStatus(FWordbeeUserData userInfo, int32 RequestId, int32 RetryCount = 0, FOnPullDocumentComplete callback = nullptr);

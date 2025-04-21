@@ -50,7 +50,7 @@ void SWorkFlowStatus::Construct(const FArguments& InArgs)
 
 void SWorkFlowStatus::FetchWorkflow()
 {
-	userInfo = SingletonUtil::GetFromIni<FWordbeeUserData>();
+	userInfo = wordbee::SingletonUtil<FWordbeeUserData>::GetFromIni();
 	// Simulate fetching data from API
 	API::FetchWorkflow(userInfo, TEXT("SomeDocumentId"),
 		[this](const TArray<FWorkflowStatus>& FetchedWorkflows)

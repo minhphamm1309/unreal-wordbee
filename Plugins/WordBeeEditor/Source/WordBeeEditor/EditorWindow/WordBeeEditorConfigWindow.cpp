@@ -13,24 +13,27 @@ void SWordBeeEditorConfigWindow::Construct(const FArguments& InArgs)
 
 	WidgetSwitcher->AddSlot()
 	[
-		SNew(SConnectTab)
+		SAssignNew(ConnectTabWidget, SConnectTab)
 	];
 
 	WidgetSwitcher->AddSlot()
 	[
-		SNew(SEditorConfigWidget)
+		SAssignNew(EditorConfigWidget, SEditorConfigWidget)
 	];
 
 	WidgetSwitcher->AddSlot()
 	[
-		SNew(SDocumentInfo)
+		SAssignNew(DocumentInfoWidget, SDocumentInfo)
 	];
 
 	WidgetSwitcher->AddSlot()
 	[
 		SNew(SAboutTabUI)
 	];
-
+	// Pass parent to ConnectTab
+	ConnectTabWidget->SetParentWindow(SharedThis(this));
+	DocumentInfoWidget->SetParentWindow(SharedThis(this));
+	OnDocumentChanged();
 	ChildSlot
 	[
 		SNew(SVerticalBox)
@@ -108,5 +111,17 @@ FReply SWordBeeEditorConfigWindow::OnAboutTabClicked()
 	WidgetSwitcher->SetActiveWidgetIndex(3);
 	return FReply::Handled();
 }
-
+void SWordBeeEditorConfigWindow::OnDocumentChanged()
+{
+	if (DocumentInfoWidget.IsValid())
+	{
+		DocumentInfoWidget->RefreshDocumentInfo([this](bool bSuccess)
+		{
+			if (EditorConfigWidget.IsValid())
+			{
+				EditorConfigWidget->FetchLangsFromAPI();
+			}
+		});
+	}
+}
 END_SLATE_FUNCTION_BUILD_OPTIMIZATION

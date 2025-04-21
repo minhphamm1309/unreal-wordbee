@@ -10,44 +10,64 @@
 #include "Framework/Notifications/NotificationManager.h"
 #include "Widgets/Notifications/SNotificationList.h"
 #include "Internationalization/Text.h"
+#include "WordBeeEditor/Utils/Locate.h"
+
+void DocumentService::SyncDocument(TSharedPtr<TArray<FString>> SelectedLanguages, FString src, bool IsChangesOnly, TFunction<void(bool)> OnFinish)
+{
+	PullDocument(SelectedLanguages, src, [=](bool bPullSuccess)
+	{
+		if (bPullSuccess)
+		{
+			PushDocument(SelectedLanguages, IsChangesOnly, [=](bool bPushSuccess)
+			{
+				if (OnFinish) OnFinish(bPushSuccess);
+			});
+		}
+		else
+		{
+			if (OnFinish) OnFinish(false);
+		}
+	});
+}
 
 
-void DocumentService::PullDocument(TSharedPtr<TArray<FString>> SelectedLanguages, FString src)
+void DocumentService::PullDocument(TSharedPtr<TArray<FString>> SelectedLanguages, FString src, TFunction<void(bool)> OnFinish)
 {
 	if (SelectedLanguages && SelectedLanguages->Num() == 0)
 	{
+		if (OnFinish) OnFinish(false);
 		return;
 	}
 	TSharedPtr<SNotificationItem> LoadingNotification = ShowLoadingNotification("Pulling data from Wordbee...");
-	FWordbeeUserData userInfo = SingletonUtil::GetFromIni<FWordbeeUserData>();
+	FWordbeeUserData userInfo = wordbee::SingletonUtil<FWordbeeUserData>::GetFromIni();
 	ULinkDocumentCommand::Execute(userInfo, FString::FromInt(userInfo.DocumentId),
   FOnLinkDocumentComplete::CreateLambda(
-	  [LoadingNotification, SelectedLanguages, src](bool bSuccess, const FWordbeeDocument& document)
+	  [LoadingNotification, SelectedLanguages, src, OnFinish](bool bSuccess, const FWordbeeDocument& document)
 	  {
 		  if (bSuccess)
 		  {
-		  	UpdateNotificationText(LoadingNotification, "Storing document...", false, false);
-			  FDocumentData documentData = SingletonUtil::GetFromIni<FDocumentData>();
+			  FDocumentData documentData = wordbee::SingletonUtil<FDocumentData>::GetFromIni();
 			  ULinkDocumentCommand::SaveDocument(
 				  document, documentData.projectId, documentData.projectName,
 				  documentData.documentName);
-		  	UpdateNotificationText(LoadingNotification, "Importing to localization...", false, false);
 			  StoreData(SelectedLanguages, src);
 			  Locate<LocalizeUtil>::Get()->RecordsChanged.Empty();
 			  FileChangeUtil::CopyLocalizeToSaved();
 		  	UpdateNotificationText(LoadingNotification, "Pull document completed.", true, true);
+		  	if (OnFinish) OnFinish(true);
 		  }
 		  else
 		  {
 			  UE_LOG(LogTemp, Error, TEXT("Failed to pull data. Please check your connection and try again."));
 		  	UpdateNotificationText(LoadingNotification, "Failed to pull document.", false, true);
+		  	if (OnFinish) OnFinish(false);
 		  }
 	  }));
 }
 
 void DocumentService::StoreData(TSharedPtr<TArray<FString>> SelectedLanguages, FString src)
 {
-	FDocumentData document = SingletonUtil::GetFromIni<FDocumentData>();
+	FDocumentData document = wordbee::SingletonUtil<FDocumentData>::GetFromIni();
 	TArray<FSegment> segments;
 	// convert all document.Records to TArray<FSegment>
 	for (const FRecord& record : document.records)
@@ -70,7 +90,7 @@ void DocumentService::StoreData(TSharedPtr<TArray<FString>> SelectedLanguages, F
 	}
 }
 
-void DocumentService::PushDocument(TSharedPtr<TArray<FString>> SelectedLanguages, bool IsChangesOnly)
+void DocumentService::PushDocument(TSharedPtr<TArray<FString>> SelectedLanguages, bool IsChangesOnly, TFunction<void(bool)> OnFinish)
 {
 	LocalizeUtil* localizeUtil = Locate<LocalizeUtil>::Get();
 	TArray<FRecord> RecordsToCommit = IsChangesOnly? localizeUtil->RecordsChanged : FileChangeUtil::GetCurrentRecords();
@@ -88,25 +108,25 @@ void DocumentService::PushDocument(TSharedPtr<TArray<FString>> SelectedLanguages
 	});
 	if (bAllEmpty)
 	{
-		FMessageDialog::Open(EAppMsgType::Ok, FText::FromString(" No data to push to Wordbee."));
+		if (OnFinish) OnFinish(false);
 		return;
 	}
 	TSharedPtr<SNotificationItem> LoadingNotification = ShowLoadingNotification("Pushing data to Wordbee...");
-	FWordbeeUserData userInfo = SingletonUtil::GetFromIni<FWordbeeUserData>();
+	FWordbeeUserData userInfo = wordbee::SingletonUtil<FWordbeeUserData>::GetFromIni();
 	API::PushRecords(userInfo, RecordsToCommit, FOnUpdateDocumentComplete::CreateLambda(
-	 [LoadingNotification](bool bSuccess, const int32& _, const FString& message)
+	 [LoadingNotification, OnFinish](bool bSuccess, const int32& _, const FString& message)
 	 {
 	 	if (bSuccess)
 	 	{
 			 Locate<LocalizeUtil>::Get()->RecordsChanged.Empty();
 			 FileChangeUtil::CopyLocalizeToSaved();
 	 		UpdateNotificationText(LoadingNotification, "Push to Wordbee completed.", true, true);
+	 		if (OnFinish) OnFinish(true);
 	 	}
 	 	else
 	 	{
 	 		UpdateNotificationText(LoadingNotification, "Failed to push to Wordbee.", false, true);
-			 FMessageDialog::Open(EAppMsgType::Ok,
-								  FText::FromString("Failed to push data to Wordbee: " + message));
+	 		if (OnFinish) OnFinish(false);
 	 	}
 	 }));
 }

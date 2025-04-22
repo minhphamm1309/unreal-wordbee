@@ -7,11 +7,13 @@
 #include "WordBeeEditor/Models/FRecord.h"
 #include "WordBeeEditor/Models/FSegment.h"
 #include "WordBeeEditor/Models/FSegmentText.h"
+#include "WordBeeEditor/Utils/FileChangeUtil.h"
 #include "WordBeeEditor/Utils/SingletonUtil.h"
 
 void ULinkDocumentCommand::Execute(FWordbeeUserData UserInfo, const FString DocumentId,
                                    FOnLinkDocumentComplete callback)
 {
+	FileChangeUtil::SetSkipWatchChange(true);
 	API::PullDocument(UserInfo, DocumentId, FOnPullDocumentComplete::CreateLambda([=](const FString& downloadContent)
 	{
 		FWordbeeDocument WordbeeFile;
@@ -19,6 +21,7 @@ void ULinkDocumentCommand::Execute(FWordbeeUserData UserInfo, const FString Docu
 		{
 			callback.ExecuteIfBound(true, WordbeeFile);
 			UE_LOG(LogTemp, Log, TEXT("Parsed Wordbee file successfully"));
+			
 		}
 		else
 		{

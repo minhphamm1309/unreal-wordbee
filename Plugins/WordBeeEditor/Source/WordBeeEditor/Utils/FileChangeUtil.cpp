@@ -5,6 +5,8 @@
 #include "SingletonUtil.h"
 #include "WordBeeEditor/Models/FDocumentData.h"
 
+bool FileChangeUtil::bIsSkipWatchChange = false;
+
 void FileChangeUtil::FileChange(const FString& fileChanged)
 {
 	FString wordbeeInitPath = FPaths::ProjectSavedDir() / TEXT("Wordbee") / TEXT("Localization") / fileChanged;
@@ -182,4 +184,14 @@ void FileChangeUtil::CopyLocalizeToSaved()
 		FString DestFile = File.Replace(*LocDir, *wordbeeInitPath);
 		FileManager.Copy(*DestFile, *File);
 	}
+}
+
+void FileChangeUtil::SetSkipWatchChange(const bool& bSkip)
+{
+	bIsSkipWatchChange = bSkip;
+}
+
+bool FileChangeUtil::IsSkipWatchChange()
+{
+	return bIsSkipWatchChange;
 }

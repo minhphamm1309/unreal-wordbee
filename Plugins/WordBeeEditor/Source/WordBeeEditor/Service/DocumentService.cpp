@@ -68,6 +68,7 @@ void DocumentService::PullDocument(TSharedPtr<TArray<FString>> SelectedLanguages
 		  	UpdateNotificationText(LoadingNotification, "Failed to pull document.", false, true);
 		  	if (OnFinish) OnFinish(false);
 		  }
+	  	  FileChangeUtil::SetSkipWatchChange(false);
 	  }));
 }
 

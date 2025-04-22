@@ -13,4 +13,9 @@ public:
 	static void UpdateRecord(const FRecord& Record);
 	static void UpdateDocumentData(FDocumentData& Document, const FString& Key, const FString& langCode, const FString& Text);
 	static void CopyLocalizeToSaved();
+
+	static void SetSkipWatchChange(const bool& bSkip);
+	static bool IsSkipWatchChange();
+private:
+	static bool bIsSkipWatchChange;
 };

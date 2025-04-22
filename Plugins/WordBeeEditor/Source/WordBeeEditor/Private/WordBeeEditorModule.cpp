@@ -39,6 +39,7 @@ void FWordBeeEditorModule::StartWatcherLocalization()
 			LocDir,
 			IDirectoryWatcher::FDirectoryChanged::CreateLambda([this](const TArray<FFileChangeData>& FileChanges)
 			{
+				if (FileChangeUtil::IsSkipWatchChange()) return;
 				FString LocDir = FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / TEXT("Localization"));
 				for (const FFileChangeData& Change : FileChanges)
 				{

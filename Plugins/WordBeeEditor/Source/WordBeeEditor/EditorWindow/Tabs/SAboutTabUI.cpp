@@ -5,6 +5,11 @@
 #include "Widgets/SToolTip.h"
 #include "Misc/EngineVersion.h"
 #include "HAL/PlatformApplicationMisc.h"
+const FString SAboutTabUI::DocumentationUrl = TEXT("https://help.wordbee.com/Link/wordbee-link-for-unity");
+const FString SAboutTabUI::TutorialsUrl = TEXT("https://help.wordbee.com/Link/wordbee-link-for-unity");
+const FString SAboutTabUI::LegalPolicyUrl = TEXT("https://www.wordbee.com/privacy");
+const FString SAboutTabUI::ReleaseNotesUrl = TEXT("https://help.wordbee.com/Link/release-history");
+const FString SAboutTabUI::WordbeeWebsiteUrl = TEXT("https://wordbee.com");
 
 void SAboutTabUI::Construct(const FArguments& InArgs)
 {
@@ -119,30 +124,42 @@ void SAboutTabUI::Construct(const FArguments& InArgs)
 
 FReply SAboutTabUI::OnDocumentationClicked()
 {
-    FPlatformProcess::LaunchURL(TEXT("https://documentation.url"), nullptr, nullptr);
-    return FReply::Handled();
+    return OpenLinkWithConfirmation(TEXT("Documentation & online help"), DocumentationUrl);
 }
 
 FReply SAboutTabUI::OnTutorialsClicked()
 {
-    FPlatformProcess::LaunchURL(TEXT("https://tutorials.url"), nullptr, nullptr);
-    return FReply::Handled();
+    return OpenLinkWithConfirmation(TEXT("Tutorials"), TutorialsUrl);
 }
 
 FReply SAboutTabUI::OnLegalClicked()
 {
-    FPlatformProcess::LaunchURL(TEXT("https://legal.url"), nullptr, nullptr);
-    return FReply::Handled();
+    return OpenLinkWithConfirmation(TEXT("Legal policy page"), LegalPolicyUrl);
 }
 
 FReply SAboutTabUI::OnReleaseNotesClicked()
 {
-    FPlatformProcess::LaunchURL(TEXT("https://releasenotes.url"), nullptr, nullptr);
-    return FReply::Handled();
+    return OpenLinkWithConfirmation(TEXT("Release notes"), ReleaseNotesUrl);
 }
 
 FReply SAboutTabUI::OnWebsiteClicked()
 {
-    FPlatformProcess::LaunchURL(TEXT("https://wordbee.com"), nullptr, nullptr);
+    return OpenLinkWithConfirmation(TEXT("Wordbee website"), WordbeeWebsiteUrl);
+}
+FReply SAboutTabUI::OpenLinkWithConfirmation(const FString& LinkName, const FString& Url)
+{
+    const FText Title = FText::FromString(TEXT("Open External Link"));
+    const FText Message = FText::Format(
+        FText::FromString("You are about to open {0} in your browser.\n\nDo you want to continue?"),
+        FText::FromString(LinkName)
+    );
+
+    if (FMessageDialog::Open(EAppMsgType::YesNo, Message) == EAppReturnType::Yes)
+    {
+        FPlatformProcess::LaunchURL(*Url, nullptr, nullptr);
+    }
+
     return FReply::Handled();
 }
+
+

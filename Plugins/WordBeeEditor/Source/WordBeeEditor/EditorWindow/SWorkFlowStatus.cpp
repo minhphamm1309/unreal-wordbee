@@ -85,7 +85,7 @@ TSharedRef<ITableRow> SWorkFlowStatus::GenerateRow(TSharedPtr<FWorkflowStatus> I
 		+ SHorizontalBox::Slot()
 		.FillWidth(0.5f)
 		[
-			SNew(STextBlock).Text(FText::FromString(Item->Statust))
+			SNew(STextBlock).Text(FText::FromString(Item->GetDisplayedStatus()))
 		]
 	];
 }

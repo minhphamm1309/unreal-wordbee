@@ -179,5 +179,21 @@ public:
 
     UPROPERTY(BlueprintReadWrite, Category = "Workflow")
     FString Statust;
+    FString GetDisplayedStatus() const
+    {
+        switch (Status)
+        {
+        case 0:
+            return TEXT("In Translation");
+        case 1:
+            return TEXT("Translation Completed");
+        case 2:
+            return TEXT("Awaiting Acceptance");
+        case 3:
+            return TEXT("Pending Assignment");
+        default:
+            return TEXT("Unknown");
+        }
+    }
 };
 

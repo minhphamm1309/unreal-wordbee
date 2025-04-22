@@ -47,7 +47,7 @@ private:
 	void SaveSettings();
 	void LoadSettings() const;
 	void LoadDocumentSettings();
-	bool HasDocumentsFetched() const;
+	bool IsSelectDocsReady() const;
 	void SetDocumentsFetched();
 	
 	void OnFetchDocumentsResponseReceived(const TArray<FDocumentDataResponse>& response);

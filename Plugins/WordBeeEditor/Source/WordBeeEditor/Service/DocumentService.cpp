@@ -39,6 +39,7 @@ void DocumentService::PullDocument(TSharedPtr<TArray<FString>> SelectedLanguages
 		return;
 	}
 	TSharedPtr<SNotificationItem> LoadingNotification = ShowLoadingNotification("Pulling data from Wordbee...");
+	UE_LOG(LogTemp, Log, TEXT("Start pull at: %s"), *FDateTime::Now().ToString(TEXT("%Y-%m-%d %H:%M:%S")));
 	FWordbeeUserData userInfo = wordbee::SingletonUtil<FWordbeeUserData>::GetFromIni();
 	ULinkDocumentCommand::Execute(userInfo, FString::FromInt(userInfo.DocumentId),
   FOnLinkDocumentComplete::CreateLambda(
@@ -46,13 +47,18 @@ void DocumentService::PullDocument(TSharedPtr<TArray<FString>> SelectedLanguages
 	  {
 		  if (bSuccess)
 		  {
+		  	UE_LOG(LogTemp, Log, TEXT("Pull API finished at: %s"), *FDateTime::Now().ToString(TEXT("%Y-%m-%d %H:%M:%S")));
 			  FDocumentData documentData = wordbee::SingletonUtil<FDocumentData>::GetFromIni();
 			  ULinkDocumentCommand::SaveDocument(
 				  document, documentData.projectId, documentData.projectName,
 				  documentData.documentName);
+		  	UE_LOG(LogTemp, Log, TEXT("SaveDocument finished at: %s"), *FDateTime::Now().ToString(TEXT("%Y-%m-%d %H:%M:%S")));
 			  StoreData(SelectedLanguages, src);
+		  	UE_LOG(LogTemp, Log, TEXT("StoreData finished at: %s"), *FDateTime::Now().ToString(TEXT("%Y-%m-%d %H:%M:%S")));
 			  Locate<LocalizeUtil>::Get()->RecordsChanged.Empty();
+		  	UE_LOG(LogTemp, Log, TEXT("Empty recordsChanged finished at: %s"), *FDateTime::Now().ToString(TEXT("%Y-%m-%d %H:%M:%S")));
 			  FileChangeUtil::CopyLocalizeToSaved();
+		  	UE_LOG(LogTemp, Log, TEXT("CopyLocalizeToSaved finished at: %s"), *FDateTime::Now().ToString(TEXT("%Y-%m-%d %H:%M:%S")));
 		  	UpdateNotificationText(LoadingNotification, "Pull document completed.", true, true);
 		  	if (OnFinish) OnFinish(true);
 		  }

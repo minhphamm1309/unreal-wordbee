@@ -134,7 +134,7 @@ void SConnectTab::Construct(const FArguments& InArgs)
 						SNew(SButton)
 						             .Text(FText::FromString("Select Document"))
  // Bind the button text to the current state
-						             .IsEnabled(this, &SConnectTab::HasDocumentsFetched) // Bind button enabled state
+						             .IsEnabled(this, &SConnectTab::IsSelectDocsReady) // Bind button enabled state
 						             .OnClicked(this, &SConnectTab::OnSelectDocumentClicked)
 					]
 				]
@@ -204,21 +204,15 @@ FReply SConnectTab::OnSelectDocumentClicked()
 FReply SConnectTab::OnLinkDocumentClicked()
 {
 	FString SDocumentId = DocumentId->GetText().ToString();
-	if (HasDocumentsFetched())
+	if (UserInfo.DocumentId == 0)
 	{
 		bIsLinkReadyToClick = false;
 		API::FetchDocumentById(UserInfo, SDocumentId, [this, SDocumentId](const FDocumentInfo& DocumentInfo)
 		{
 			bIsLinkReadyToClick = true;
 			UserInfo.DocumentId = FCString::Atoi(*SDocumentId);
-				  int32 ProjectId = DocumentsData.FindByPredicate(
-					  [&](const FDocumentDataResponse& Doc)
-					  {
-						  return Doc.Id == SDocumentId;
-					  })->Pid;
-					  UserInfo.ProjectId = FString::FromInt(ProjectId);
-				  SaveSettings();
-				  NotifyParent();
+		    SaveSettings();
+		    NotifyParent();
 		},
 		[this](const FString& ErrorMessage)
 		{
@@ -308,7 +302,7 @@ void SConnectTab::LoadDocumentSettings()
 		                                         this, &SConnectTab::OnFetchDocumentsResponseReceived));
 }
 
-bool SConnectTab::HasDocumentsFetched() const
+bool SConnectTab::IsSelectDocsReady() const
 {
 	return bIsDocumentsFetched && UserInfo.DocumentId == 0;
 }

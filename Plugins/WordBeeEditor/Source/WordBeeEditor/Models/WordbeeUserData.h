@@ -36,7 +36,6 @@ public:
 			&& !AccountId.IsEmpty()
 			&& !ApiKey.IsEmpty()
 			&& !AuthToken.IsEmpty()
-			&& !ProjectId.IsEmpty()
 			&& DocumentId != 0; // Assuming 0 is invalid
 	}
 };

@@ -17,4 +17,10 @@ private:
     FReply OnLegalClicked();
     FReply OnReleaseNotesClicked();
     FReply OnWebsiteClicked();
+    static const FString DocumentationUrl;
+    static const FString TutorialsUrl;
+    static const FString LegalPolicyUrl;
+    static const FString ReleaseNotesUrl;
+    static const FString WordbeeWebsiteUrl;
+    FReply OpenLinkWithConfirmation(const FString& LinkName, const FString& Url);
 };
